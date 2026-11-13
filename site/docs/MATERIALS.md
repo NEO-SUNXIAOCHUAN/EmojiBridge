@@ -1,8 +1,8 @@
 # 宣传片同款表情包
 
-素材包将作为独立附件提供。你可以只下载软件，也可以额外下载这些素材。
+素材包作为独立附件提供。你可以只下载软件，也可以额外下载这些素材。
 
-下载入口：待正式发布后开放。
+[下载宣传片同款素材 · 707 MB](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/releases/download/S0163/EmojiBridge-promo-assets-20261114.zip)
 
 1. 下载素材ZIP并解压。
 2. 进入其中的图片、GIF素材文件夹。

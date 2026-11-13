@@ -77,8 +77,8 @@
   $('#pocket-video').addEventListener('play',()=>$('#pocket-play').innerHTML='暂停实录 <span aria-hidden="true">Ⅱ</span>');
   $('#pocket-video').addEventListener('pause',()=>$('#pocket-play').innerHTML='播放贴屏实录 <span aria-hidden="true">▷</span>');
   const videoObserver=new IntersectionObserver(entries=>entries.forEach(e=>{if(!e.isIntersecting)e.target.pause()}),{threshold:.05});document.querySelectorAll('video').forEach(v=>videoObserver.observe(v));
-  $('#download-info').onclick=()=>{const box=$('#release-details');box.hidden=!box.hidden;$('#download-info').textContent=box.hidden?'查看首发安排':'收起首发安排';$('#download-info').setAttribute('aria-expanded',String(!box.hidden));if(!box.hidden)box.focus({preventScroll:true})};
-  $('#download-info').setAttribute('aria-expanded','false');$('#download-info').setAttribute('aria-controls','release-details');
+  $('#download-info').onclick=()=>{const hint=$('#download-followup');if(hint){hint.hidden=false;hint.textContent='下载后完整解压，双击 EmojiBridge.exe。好用的话，欢迎点个 Star。'}};
+
   window.addEventListener('resize',()=>draw(progress));
   window.addEventListener('load',()=>{draw(progress);setReduced(reduced)});
   // Deterministic capture hook: no networking, account access or software control.
