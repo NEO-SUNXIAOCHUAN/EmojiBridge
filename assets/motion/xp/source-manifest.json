@@ -1,0 +1,28 @@
+{
+  "repository": "misode/mcmeta",
+  "version_ref": "1.21.1-assets",
+  "items": [
+    {
+      "filename": "glass_bottle.png",
+      "source_url": "https://raw.githubusercontent.com/misode/mcmeta/1.21.1-assets/assets/minecraft/textures/item/glass_bottle.png",
+      "version": "1.21.1-assets",
+      "dimensions": [
+        16,
+        16
+      ],
+      "sha256": "6a09a39bb6c41bc92bd5eca1f51caf5b582a85f68206b164476c8e14a4669416",
+      "bytes": 165
+    },
+    {
+      "filename": "experience_bottle.png",
+      "source_url": "https://raw.githubusercontent.com/misode/mcmeta/1.21.1-assets/assets/minecraft/textures/item/experience_bottle.png",
+      "version": "1.21.1-assets",
+      "dimensions": [
+        16,
+        16
+      ],
+      "sha256": "bf824bc91dc620010fed8c7ae9da9f91d4ce7910317b1a056029fd2dad4b3a8c",
+      "bytes": 240
+    }
+  ]
+}

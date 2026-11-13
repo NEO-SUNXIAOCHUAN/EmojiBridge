@@ -1,0 +1,99 @@
+{
+  "duration": 14.8,
+  "fps": 60,
+  "width": 1600,
+  "height": 640,
+  "events": [
+    {
+      "t": 1.8,
+      "task": {
+        "newTask": true,
+        "taskId": "audio-audition",
+        "attempt": 1,
+        "seq": 1,
+        "phase": "working",
+        "source": "qq",
+        "target": "wechat",
+        "completed": 0,
+        "total": 3
+      }
+    },
+    {
+      "t": 9,
+      "task": {
+        "taskId": "audio-audition",
+        "attempt": 1,
+        "seq": 2,
+        "phase": "waiting"
+      }
+    },
+    {
+      "t": 10.8,
+      "task": {
+        "taskId": "audio-audition",
+        "attempt": 1,
+        "seq": 3,
+        "phase": "success",
+        "confirmed": true,
+        "completed": 3,
+        "total": 3
+      }
+    }
+  ],
+  "audioEvents": [
+    {
+      "t": 1.8,
+      "clip": "enderman-teleport-1.wav",
+      "gain": 0.22,
+      "role": "Pearl-to-Enderman appearance; once"
+    },
+    {
+      "t": 3.6,
+      "clip": "enderman-growl-1.wav",
+      "gain": 0.16,
+      "role": "Low growl while carrying"
+    },
+    {
+      "t": 7.4,
+      "clip": "enderman-growl-3.wav",
+      "gain": 0.16,
+      "role": "Second low growl, 3.8 seconds after first"
+    }
+  ],
+  "states": [
+    {
+      "t": 0.8,
+      "elapsed": 0.8,
+      "phase": "idle"
+    },
+    {
+      "t": 2.02,
+      "elapsed": 0.22,
+      "phase": "spawning"
+    },
+    {
+      "t": 3.6,
+      "elapsed": 1.35,
+      "phase": "working"
+    },
+    {
+      "t": 7.4,
+      "elapsed": 5.15,
+      "phase": "working"
+    },
+    {
+      "t": 10.95,
+      "elapsed": 0.15,
+      "phase": "success"
+    },
+    {
+      "t": 14,
+      "elapsed": 3.1999999999999997,
+      "phase": "success"
+    }
+  ],
+  "visualSource": "EmojiBridge_enderman_v4_source.zip version 1; character, effects, stage, controller unchanged",
+  "audioSource": "User-provided 抖音2026112-192932.mp4",
+  "audioProcessing": "Original sound at playback rate 1; gain only; no pitch shift, time stretching, EQ, synthesis or extra background music",
+  "validation": "Native Canvas rendering and programmatic timeline; no browser or subjective auditory validation"
+}

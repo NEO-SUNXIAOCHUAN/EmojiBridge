@@ -1,0 +1,4 @@
+{
+  "wechat": {"tested": "4.1.15.50", "family": [4, 1], "candidate_families": [[4, 2]], "adapter": "wechat4-wcdb-hmac-qt51514"},
+  "qq": {"tested": "9.9.20.37625", "family": [9, 9], "adapter": "qqnt99-personal-uia-96"}
+}

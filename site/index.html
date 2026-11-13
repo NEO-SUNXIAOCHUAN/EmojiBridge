@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>EmojiBridge · 让好梗自由流动</title>
+  <meta name="description" content="收集喜欢的表情，做成自己的梗，再带去 QQ 和微信。EmojiBridge Windows 表情工具。QQ 微信互通、视频转 GIF、漫画配文、随手素材与趣味动效。">
+  <link rel="icon" href="assets/icon.png"><link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="gallery.css">
+  <link rel="stylesheet" href="media.css"><script src="media.js" defer></script><script src="app.js" defer></script><script src="gallery.js" defer></script>
+<meta name="author" content="Neo"><link rel="canonical" href="https://neo-sunxiaochuan.github.io/EmojiBridge/index.html"><meta property="og:title" content="EmojiBridge · 好梗，不必留在原地。"><meta property="og:description" content="QQ 微信表情互通、漫画配文、视频转 GIF、随手素材。Created by Neo."><meta property="og:image" content="https://neo-sunxiaochuan.github.io/EmojiBridge/assets/readme-cover.png"><meta property="og:type" content="website"><link rel="stylesheet" href="release.css"><script src="release.js" defer></script><link rel="stylesheet" href="details.css"><script type="module" src="details.js"></script></head>
+<body>
+<a class="skip" href="#main">跳到正文</a>
+<header class="header wrap">
+  <a class="brand" href="#" aria-label="EmojiBridge 首页"><img src="assets/icon.png" width="34" height="34" alt=""><span>EmojiBridge</span></a>
+  <nav aria-label="主要导航"><a href="#playground">互通</a><a href="#create">创作</a><a href="#pocket">随手素材</a><a href="features.html">功能详览</a></nav>
+  <a class="nav-download" href="#download">首发准备中 <span aria-hidden="true">↗</span></a>
+</header>
+<main id="main">
+  <section class="hero wrap" aria-labelledby="hero-title">
+    <div class="hero-heading">
+      <div class="heading-top"><span>好梗，</span><div class="meme-stack" aria-hidden="true"><img class="stack-back" src="assets/basketball.png" alt=""><img class="stack-front" src="assets/ride.png" alt=""></div></div>
+      <h1 id="hero-title">不必留在原地。</h1>
+    </div>
+    <p class="intro">把 QQ 和微信里的表情接起来。<br>收集、创作，再带去你想聊天的地方。</p>
+    <div class="hero-actions"><button class="primary" id="try-demo">试试表情互通 <span aria-hidden="true">↗</span></button><a class="star-link" href="https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">☆</span> Star on GitHub <span aria-hidden="true">↗</span></a><a href="docs/VIDEO.html" class="quiet-link">观看完整宣传片</a></div>
+
+    <div class="playground" id="playground">
+      <div class="scene-caption"><span id="scene-label">在 QQ 发现的快乐。</span><span class="demo-label">交互示意</span></div>
+      <div class="stage" id="stage" data-destination="qq">
+        <div class="stage-grid" aria-hidden="true"></div>
+        <div class="platform-word qq-word" aria-hidden="true">QQ</div>
+        <div class="platform-word wechat-word" aria-hidden="true">微信</div>
+        <div class="scene-plane">
+          <div class="product-window">
+            <div class="window-top"><img src="assets/icon.png" width="15" height="15" alt=""><span>EmojiBridge</span><span class="window-actions" aria-hidden="true">− &nbsp; □ &nbsp; ×</span></div>
+            <img class="product-image" src="assets/product.png" alt="EmojiBridge 原深色界面，选中表情后可转到微信、QQ，或加入素材库" width="2160" height="1380">
+          </div>
+          <div class="wechat-window" aria-hidden="true">
+            <div class="wechat-rail"><span class="wx-avatar">微</span><span class="chat-bubble"></span><span class="rail-person">♧</span><span class="rail-line">☰</span></div>
+            <div class="wechat-body"><div class="wechat-title">文件传输助手<span>···</span></div><div class="chat-content"><div class="chat-time">刚刚</div><div class="chat-message"><span class="chat-name">我</span><div class="chat-slot"></div></div><div class="collection-success"><span>✓</span> 已加入表情</div></div><div class="chat-compose"><span>☺ &nbsp; ▱ &nbsp; ✂</span><small>表情到了，快乐也到了。</small><span class="send-label">发送</span></div></div>
+          </div>
+        </div>
+        <div class="flying-sticker" id="flying-sticker"><img id="main-meme" src="assets/ride.png" data-animated="assets/ride.gif" data-still="assets/ride.png" alt="骑鸡表情，在两个软件之间转移"><span class="sticker-check">✓</span></div>
+        <svg class="scarf-motion" viewBox="0 0 1200 680" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="silk" x1="0" x2="1"><stop offset="0" stop-color="#a91424" id="silk-dark"/><stop offset=".45" stop-color="#fa3443" id="silk-light"/><stop offset="1" stop-color="#e8202d" id="silk-end"/></linearGradient></defs><path id="silk-path" fill="url(#silk)" d=""/><path id="silk-tail" fill="#cd1727" d=""/></svg>
+        <div class="flight-word" id="flight-word" aria-hidden="true">表情</div>
+        <div class="arrival-note" aria-hidden="true"><i></i> 去哪聊，都有得发。</div>
+      </div>
+      <div class="demo-controls">
+        <div class="direction" aria-label="互通方向"><button id="to-qq" aria-pressed="true">QQ</button><span aria-hidden="true">⇄</span><button id="to-wechat" aria-pressed="false">微信</button></div>
+        <p id="demo-status" role="status" aria-live="polite">选中喜欢的表情，让它去微信。</p>
+        <button class="transfer" id="transfer">带去微信 <span aria-hidden="true">↗</span></button>
+      </div>
+    </div>
+    <p class="hero-footnote">Windows 桌面工具 · 支持双向与批量转移<span>QQ / 微信需在本机登录并保持可操作</span></p>
+  </section>
+
+  <section class="create-section" id="create" aria-labelledby="create-title">
+    <div class="wrap">
+      <div class="section-intro"><div><h2 id="create-title">不止会搬。<br>还很会玩。</h2></div><p>名场面剪成 GIF，漫画加一句神回复。<br>再给它一点弹性、一点个性。<br>想表达的，自己动手就有。</p></div>
+      <div class="creation-workbench">
+        <div class="creation-toolbar"><div class="tool-tabs" aria-label="查看作品与收集演示"><button data-work="type" aria-pressed="true">文字与拼图</button><button data-work="bounce" aria-pressed="false">Q 弹与旋转</button><button data-work="clip" aria-pressed="false">视频变 GIF</button><button data-work="collect" aria-pressed="false" aria-controls="work-collect">评论区收集</button></div><span class="sample-note">实际作品</span></div>
+        <div class="work-area" id="work-area">
+          <div class="work-panel type-panel" id="work-type">
+            <div class="gallery-intro"><div><h3>漫画留白，刚好放下你的神回复。</h3><p>横排、竖排、描边，把那句话写进画面。</p></div><span id="gallery-count" aria-live="polite">02 / 09</span></div>
+            <div class="comic-stage" id="comic-stage" role="group" aria-label="漫画配文作品画廊，使用左右按钮切换">
+              <div id="comic-deck"></div>
+              <button class="gallery-arrow previous" id="comic-prev" aria-label="上一张作品">‹</button>
+              <button class="gallery-arrow next" id="comic-next" aria-label="下一张作品">›</button>
+            </div>
+            <div class="comic-controls"><div><b id="comic-title">你怎么这么帅</b><span id="comic-kind">对白框配文</span></div><div class="comic-actions"><button id="comic-before" aria-pressed="false">看配字前</button><button id="comic-replay">重播配字</button><button id="comic-expand">放大看</button></div></div>
+            <div id="comic-thumbnails" class="comic-thumbnails" aria-label="选择作品"></div>
+          </div>
+          <div class="work-panel clip-panel media-panel" id="work-collect" hidden>
+  <div class="demo-player" data-media-player data-sound="false">
+    <video id="collect-video" src="assets/collect-full.mp4" poster="assets/collect-full.jpg" controls muted playsinline preload="none" aria-label="抖音评论区表情拖入随手素材的流程演示"></video>
+    <button class="media-cover" data-media-play aria-label="播放评论区收集演示"><img src="assets/collect-full.jpg" alt="抖音评论区与 EmojiBridge 随手素材窗口" loading="lazy" width="1280" height="720"><span class="media-action"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3 17 10 6 17Z"/></svg><span data-play-label>播放演示</span></span></button>
+    <p class="media-status" data-media-status role="status" aria-live="polite"></p>
+  </div>
+  <div class="media-meta"><span>抖音评论区 → 拖入随手素材 → 随时取用</span><a href="features.html#collect">展开收集功能 ↗</a></div>
+</div>
+<div class="work-panel bounce-panel" id="work-bounce" hidden><div class="bounce-type" aria-hidden="true">Q 弹</div><video id="bounce-video" src="assets/bounce.mp4" poster="assets/bounce.jpg" muted loop playsinline preload="none" controls aria-label="Q弹动效实录"></video><p>挤压、回弹，文字也一起动起来。</p></div>
+          <div class="work-panel clip-panel media-panel" id="work-clip" hidden><div class="demo-player" data-media-player data-sound="true"><video id="clip-video" src="assets/blg.mp4" poster="assets/blg.jpg" controls playsinline preload="none" aria-label="BLG 视频选段与 GIF 裁剪实录"></video><button class="media-cover" data-media-play aria-label="播放实录，含原声"><img src="assets/blg.jpg" alt="" loading="lazy" width="1280" height="720"><span class="media-action"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3 17 10 6 17Z"/></svg><span data-play-label>播放实录 · 含原声</span></span></button><p class="media-status" data-media-status role="status" aria-live="polite"></p></div><div class="media-meta"><span>选段 → 预览 → 生成 GIF → 裁剪</span><a href="features.html#clip">展开剪辑功能 ↗</a></div></div>
+</div>
+<div class="work-caption"><span id="work-description">改文字、摆图层、拼画面。做一张有自己风格的梗图。</span><span id="work-tools">文字 / 基础图形 / 多图拼接</span></div>
+      </div>
+      <div class="feature-lines"><p><b>从一帧到一段</b><span>裁剪画面、截取视频、导出 GIF</span></p><p><b>从静态到动态</b><span>Q 弹、旋转、掉落物与传送动效</span></p><p><b>从灵感到同款</b><span>套用模板，复用自己的排版</span></p></div>
+      <a class="feature-door" href="features.html"><span><strong>一个梗，从收下来到发出去。</strong><small>收集、剪辑、抠图、拼图、模板、动效与批量互通，展开看看。</small></span><span>探索完整工作流 ↗</span></a>
+    </div>
+  </section>
+
+  <section class="handoff-section wrap" id="drag-out" aria-labelledby="handoff-title">
+    <div class="handoff-heading"><h2 id="handoff-title">做好了。<br>顺手，拖出去。</h2><div><p>刚做好的梗，不必再到文件夹里翻。<br>从成品拖出区，直接带到聊天窗口或文件夹。<br>创作到使用，少几次来回。</p><a class="quiet-link" href="features.html#transfer">看看导出与互通 ↗</a></div></div>
+    <div class="handoff-demo" id="handoff-demo">
+      <div class="handoff-topline"><span>从创作，到分享。</span><span>交互示意</span></div>
+      <div class="handoff-track">
+        <div class="handoff-source"><span class="handoff-label">你的作品</span><button id="drag-sample" class="drag-sample" aria-label="拖动作品到右侧接收区域，或按回车观看演示"><img src="assets/thumbs/joe.webp" alt="我被打死了，漫画配文作品" draggable="false" width="90" height="116"><span>拖出 PNG</span><svg viewBox="0 0 16 24" aria-hidden="true"><g fill="currentColor"><circle cx="4" cy="6" r="1.3"/><circle cx="12" cy="6" r="1.3"/><circle cx="4" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="4" cy="18" r="1.3"/><circle cx="12" cy="18" r="1.3"/></g></svg></button><span class="handoff-small">按住卡片，向右拖动</span></div>
+        <svg class="handoff-arrow" viewBox="0 0 100 24" aria-hidden="true"><path d="M2 12h92m-9-8 9 8-9 8"/></svg>
+        <div class="handoff-target" id="handoff-target"><span class="handoff-label">需要它的地方</span><div class="drop-slot"><svg class="drop-icon" viewBox="0 0 48 40" aria-hidden="true"><path d="M3 12V7h16l5 5h21v23H3Z"/><path d="M3 17h42"/></svg><span class="drop-placeholder">松手，就接住了。</span><img class="received-work" src="assets/thumbs/joe.webp" alt="" width="80" height="110"></div><span class="handoff-small">聊天窗口 / 文件夹</span></div>
+      </div>
+      <img id="drag-ghost" src="assets/thumbs/joe.webp" alt="" draggable="false" hidden>
+      <div class="handoff-bottom"><p id="drag-status" role="status">一张成品，一次拖出。</p><button id="drag-replay" class="detail-replay">播放拖出演示 <span aria-hidden="true">↗</span></button></div>
+    </div>
+    <p class="detail-note">这里可体验拖动示意。桌面软件会拖出成品文件；能否接收，取决于目标软件。自动加入 QQ / 微信收藏，可使用互通功能。</p>
+  </section>
+
+  <section class="pocket-section wrap" id="pocket" aria-labelledby="pocket-title">
+    <div class="pocket-heading"><h2 id="pocket-title">逛到哪，<br>带到哪。</h2><div><p>随手素材，浮在你正在看的网页上。<br>喜欢的收进来，想用的拖出去。<br>做好的表情，也能再送去 QQ 和微信。</p><button class="text-button" id="pocket-play">播放完整演示 · 53 秒 <span aria-hidden="true">▷</span></button></div></div>
+    <div class="pocket-cinema"><div class="demo-player" data-media-player data-sound="true"><video id="pocket-video" src="assets/pocket.mp4" poster="assets/pocket.jpg" controls playsinline preload="none" aria-label="随手素材与网页贴屏实录"></video><button class="media-cover" data-media-play aria-label="播放实录，含原声"><img src="assets/pocket.jpg" alt="" loading="lazy" width="1280" height="720"><span class="media-action"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3 17 10 6 17Z"/></svg><span data-play-label>播放实录 · 含原声</span></span></button><p class="media-status" data-media-status role="status" aria-live="polite"></p></div><span class="cinema-label">完整演示 · 53 秒 · 贴屏、截图与继续编辑 · 含原声</span></div><div class="pocket-caption"><span>把素材窗口带在身边。</span><p>独立置顶窗口与屏幕贴图；不改变网页内容。</p></div>
+  </section>
+
+  <section class="delight-section wrap" id="product-details" aria-labelledby="delight-title">
+    <div class="delight-heading"><h2 id="delight-title">连等待，<br>都有一点意思。</h2><p>熟悉的像素，放进每天都会用到的细节。<br>经验收进瓶子，表情交给末影人。<br>好用之外，也想让你会心一笑。</p></div>
+    <div class="delight-tabs" role="group" aria-label="选择软件动效"><button data-detail="xp" aria-pressed="true">经验瓶 · 收好这次等待</button><button data-detail="ender" aria-pressed="false">末影人 · 表情搬运中</button></div>
+    <div class="delight-stage" id="delight-stage" aria-busy="true">
+      <div class="delight-stage-top"><span id="detail-stage-name">任务处理与完成收尾</span><span>软件同款动效 · 演示</span></div>
+      <canvas id="detail-xp" width="720" height="180" role="img" aria-label="经验瓶吸收经验球的任务完成动效"></canvas>
+      <canvas id="detail-ender" width="1000" height="210" role="img" aria-label="末影人通过传送门搬运表情的舞台" hidden></canvas>
+      <div class="delight-stage-bottom"><p id="detail-status" role="status">动效载入中…</p><button id="detail-replay" class="detail-replay" disabled>播放动效 <span aria-hidden="true">↗</span></button></div>
+    </div>
+    <div class="delight-caption"><div><h3 id="detail-title">把等待，收进一只经验瓶。</h3><p id="detail-description">处理时，经验球汇入经验条；完成后，瓶子倾身接住，再轻轻离场。结果已经可用，不必等动画播完。</p></div><p id="detail-note">经验等级记录处理耗时，<br>不表示任务完成百分比。</p></div>
+  </section>
+
+  <section class="download-section" id="download" aria-labelledby="download-title"><div class="wrap">
+    <div class="download-top"><img src="assets/icon.png" alt="" width="64" height="64"><p>留住灵感。接住快乐。</p><h2 id="download-title">下一张表情，<br>让它属于你。</h2><p class="release-note"><i></i> 首发准备中，下载尚未开放。</p></div>
+    <div class="download-options"><div class="main-download"><span class="os-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><div><h3>EmojiBridge for Windows</h3><p>下载 ZIP，完整解压，双击 EXE。<br>主程序与完整包，选一个就好。</p></div><button class="primary" id="download-info">查看首发安排</button></div><a class="material-download" href="docs/MATERIALS.html"><span><b>宣传片同款表情包</b><small>单独下载，解压后批量导入。</small></span><span aria-hidden="true">↗</span></a></div>
+    <div class="release-details" id="release-details" hidden tabindex="-1"><h3>首发下载安排</h3><p>软件提供 Windows x64 便携包。下载后完整解压，双击 EmojiBridge.exe；正式附件就绪后即可从这里下载。</p><ul><li><b>主程序：</b>先用互通、素材库和编辑器，需要时准备扩展。</li><li><b>完整包：</b>含同版本模板扩展，与主程序二选一。</li><li><b>宣传片素材：</b>独立可选下载，不随主程序强制捆绑。</li></ul><a href="docs/DOWNLOADS.html">查看完整安装说明</a></div>
+    <div class="usage-note"><strong>互通前，记住这两件事。</strong><ul><li><b>转入微信：</b>会使用你本人的文件传输助手发送素材并添加表情，占用文件传输助手的聊天上下文，产生相应消息记录。</li><li><b>读取 QQ 表情或执行互通时：</b>请暂时不要移动鼠标、点击或切换窗口，等待任务完成后再操作。</li></ul></div><div class="star-invitation"><div><strong>好用的话，给它一颗 Star。</strong><p>如果 EmojiBridge 帮你把好梗带到了想去的地方，<br>欢迎在 GitHub 点个 Star，支持 Neo 继续打磨。</p></div><a class="star-link" href="https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">☆</span> Star on GitHub <span aria-hidden="true">↗</span></a></div><p id="download-followup" role="status" aria-live="polite" hidden></p><div class="faq"><details><summary>需要用命令行启动吗？<span>+</span></summary><p>不需要。完整解压便携包后，双击 EmojiBridge.exe。请保留同目录的运行文件，不要只移动一个 EXE，也不要在压缩包预览中启动。</p></details><details><summary>互通前要准备什么？<span>+</span></summary><p>登录本人的 QQ 和微信。转入微信会使用文件传输助手、占用其聊天上下文并产生消息记录。读取 QQ 表情及执行互通时不要移动鼠标、点击或切换窗口，等待任务完成。</p><a href="docs/COMPATIBILITY.html">查看兼容说明</a></details><details><summary>宣传片的素材可以直接用吗？<span>+</span></summary><p>同款素材作为独立下载提供。先解压 ZIP，再多选图片与 GIF 拖进素材库；无需一次只导入一张。模板扩展与宣传片素材是两个不同的下载项。</p></details></div>
+  </div></section>
+</main>
+<footer class="footer wrap"><a class="brand" href="#"><img src="assets/icon.png" width="28" height="28" alt=""><span>EmojiBridge</span></a><p>Created by Neo · 让喜欢的表情，随手可用。</p><button id="motion-toggle" aria-pressed="false">减少动态</button><a href="README预览.html">GitHub README 预览</a></footer>
+
+<dialog id="comic-dialog" aria-labelledby="dialog-title"><div class="dialog-head"><div><b id="dialog-title">漫画配文作品</b><span id="dialog-kind"></span></div><button id="comic-close" aria-label="关闭大图">×</button></div><div class="dialog-image"><img src="assets/thumbs/joe.webp" id="comic-full" alt="漫画配文作品：你怎么这么帅"></div><div class="dialog-controls"><button id="dialog-prev" aria-label="上一张作品">‹ 上一张</button><span id="dialog-count"></span><button id="dialog-next" aria-label="下一张作品">下一张 ›</button></div></dialog>
+</body></html>

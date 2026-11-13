@@ -1,0 +1,11 @@
+exports/
+private/
+runtime/
+runtime-data/
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+*.db
+*.db-wal
+*.db-shm

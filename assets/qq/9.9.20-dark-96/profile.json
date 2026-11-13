@@ -1,0 +1,55 @@
+{
+  "version": "9.9.20.37625",
+  "window_size": [
+    1018,
+    728
+  ],
+  "dpi": 96,
+  "toolbar_roi": [
+    250,
+    468,
+    600,
+    608
+  ],
+  "panel_search_roi": [
+    250,
+    90,
+    750,
+    530
+  ],
+  "templates": {
+    "smile": "c82232be68293eed35df6fa9482db4ad318483a1dc752b002b328997527c40df",
+    "heart": "cc586093da1ee0488bf8e22c019c6445614ddbbd415dbc43cd19325c1dd2e9ce",
+    "plus": "c7f2c8d901b102f3b2f91ed9c78cd4953fca46a516ba042315cf1de8e9c8d53a",
+    "smile-active": "354a6c5663d79c8a00a70c0532d7e5ecc9c45a859f2018d6bfc6e41a1a57cda3",
+    "plus-observed-normal": "fa199bd43b0691b84302a180f7afddcae04153ee67dc46c2e6b1225f19fbc604",
+    "plus-observed-brighter": "e2e13188831e824156083ad58996e4d9386017ba613580839f95bf610717df8e",
+    "smile-light": "3f4bd471d5d796bb047a7452e4e68238cac354ed57255b726cabcfad5480cbf2",
+    "smile-light-active": "c259c322dcdd931b3bf26c0fd24dd8dfb2ff7d72059f336205f333f91e431e6d",
+    "heart-light": "6e33575e81d0c57a5e5ed2384ac8be26f083a89ab5a7e41d39a2e13c65064102",
+    "plus-light": "090c46b7ce0f65a45dba1c9bbaf87dd5811614de2658e8f38695ff8639c3aaf5"
+  },
+  "variants": {
+    "smile": [
+      "smile",
+      "smile-active",
+      "smile-light",
+      "smile-light-active"
+    ],
+    "plus": [
+      "plus",
+      "plus-observed-normal",
+      "plus-observed-brighter",
+      "plus-light"
+    ],
+    "heart": [
+      "heart",
+      "heart-light"
+    ]
+  },
+  "allow_restore_maximized": true,
+  "themes": [
+    "dark",
+    "light"
+  ]
+}

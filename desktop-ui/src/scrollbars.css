@@ -1,0 +1,16 @@
+/* Same 4/6 px ink, 16 px target, 1 s idle and 180 ms fade as the library. */
+:root{--scroll-ink:#7d899f9c;--scroll-hover:#98a6bee0}
+*:not(.library-scroll .content){scrollbar-width:auto;scrollbar-color:auto}
+*::-webkit-scrollbar{width:16px;height:16px}
+*::-webkit-scrollbar-track,*::-webkit-scrollbar-corner{background:transparent;border:0}
+*::-webkit-scrollbar-thumb{background:transparent;background-clip:padding-box;border:6px solid transparent;border-radius:12px;transition:background-color 180ms}
+*[data-scroll-active]::-webkit-scrollbar-thumb,[data-scrollbars=always] *::-webkit-scrollbar-thumb{background-color:var(--scroll-ink)}
+*::-webkit-scrollbar-thumb:hover,*::-webkit-scrollbar-thumb:active{background-color:var(--scroll-hover);border-width:5px}
+*::-webkit-scrollbar-button{display:none}
+.library-scroll .content{scrollbar-width:none}
+.library-scroll .content::-webkit-scrollbar{display:none}
+.overlay-scroll span{width:4px}
+.overlay-scroll:hover span,.overlay-scroll:focus-visible span{width:6px}
+@media(prefers-reduced-motion:reduce){*::-webkit-scrollbar-thumb,.overlay-scroll{transition:none}}
+[data-reduce-motion=true] *::-webkit-scrollbar-thumb,[data-reduce-motion=true] .overlay-scroll{transition:none}
+@media(forced-colors:active){*{scrollbar-color:auto!important}*::-webkit-scrollbar-thumb{background-color:ButtonText!important}.overlay-scroll{opacity:1}.overlay-scroll span{background:ButtonText}}

@@ -1,0 +1,53 @@
+[
+  {
+    "path": "User-provided source; original provenance retained privately",
+    "url": "https://raw.githubusercontent.com/misode/mcmeta/1.21.1-assets/assets/minecraft/textures/gui/sprites/hud/experience_bar_background.png",
+    "bytes": 167,
+    "size": [
+      182,
+      5
+    ]
+  },
+  {
+    "path": "User-provided source; original provenance retained privately",
+    "url": "https://raw.githubusercontent.com/misode/mcmeta/1.21.1-assets/assets/minecraft/textures/gui/sprites/hud/experience_bar_progress.png",
+    "bytes": 1241,
+    "size": [
+      182,
+      5
+    ]
+  },
+  {
+    "path": "User-provided source; original provenance retained privately",
+    "url": "https://raw.githubusercontent.com/misode/mcmeta/1.21.1-assets/assets/minecraft/textures/entity/experience_orb.png",
+    "bytes": 474,
+    "size": [
+      64,
+      64
+    ]
+  },
+  {
+    "path": "User-provided source; original provenance retained privately",
+    "url": "https://raw.githubusercontent.com/misode/mcmeta/1.21.1-assets/assets/minecraft/textures/font/ascii.png",
+    "bytes": 810,
+    "size": [
+      128,
+      128
+    ]
+  },
+  {
+    "path": "User-provided source; original provenance retained privately",
+    "url": "https://raw.githubusercontent.com/misode/mcmeta/1.21.1-assets/assets/minecraft/font/default.json",
+    "bytes": 398
+  },
+  {
+    "path": "User-provided source; original provenance retained privately",
+    "url": "https://raw.githubusercontent.com/misode/mcmeta/1.21.1-assets/assets/minecraft/font/include/default.json",
+    "bytes": 19118
+  },
+  {
+    "path": "User-provided source; original provenance retained privately",
+    "url": "https://raw.githubusercontent.com/misode/mcmeta/1.21.1-assets/assets/minecraft/sounds.json",
+    "bytes": 513868
+  }
+]

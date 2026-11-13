@@ -1,0 +1,4 @@
+QQ original full-colour asset downloaded unchanged from Tencent official product page.
+Page: https://www.tencent.com/products/qq/
+Asset: https://www.tencent.com/wp-content/uploads/2022/12/qq-1-1.svg
+SVG source is byte-identical to downloaded original. PNG is a transparent 800x800 rendering of the same paths/colours. Existing CSS class fills were resolved inline in memory for the SVG rasterizer, which otherwise ignores style classes. No paths or colours were redesigned.

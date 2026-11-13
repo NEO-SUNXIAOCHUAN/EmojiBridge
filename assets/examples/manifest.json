@@ -1,0 +1,153 @@
+[
+  {
+    "file": "1f63c.png",
+    "name": "得意猫",
+    "collections": [
+      "日常反应"
+    ]
+  },
+  {
+    "file": "1f979.png",
+    "name": "感动",
+    "collections": [
+      "日常反应"
+    ]
+  },
+  {
+    "file": "1f634.png",
+    "name": "困困",
+    "collections": [
+      "日常反应"
+    ]
+  },
+  {
+    "file": "1f60e.png",
+    "name": "酷脸",
+    "collections": [
+      "日常反应"
+    ]
+  },
+  {
+    "file": "1f632.png",
+    "name": "惊讶",
+    "collections": [
+      "日常反应"
+    ]
+  },
+  {
+    "file": "1fae0.png",
+    "name": "融化",
+    "collections": [
+      "日常反应"
+    ]
+  },
+  {
+    "file": "1f973.png",
+    "name": "庆祝",
+    "collections": [
+      "日常反应"
+    ]
+  },
+  {
+    "file": "1f47b.png",
+    "name": "幽灵",
+    "collections": [
+      "日常反应",
+      "创作素材"
+    ]
+  },
+  {
+    "file": "1f438.png",
+    "name": "青蛙",
+    "collections": [
+      "日常反应",
+      "创作素材"
+    ]
+  },
+  {
+    "file": "1f431.png",
+    "name": "小猫",
+    "collections": [
+      "日常反应",
+      "创作素材"
+    ]
+  },
+  {
+    "file": "1fae1.png",
+    "name": "敬礼",
+    "collections": [
+      "日常反应"
+    ]
+  },
+  {
+    "file": "1f643.png",
+    "name": "倒脸",
+    "collections": [
+      "日常反应"
+    ]
+  },
+  {
+    "file": "1f37f.png",
+    "name": "爆米花",
+    "collections": [
+      "日常反应"
+    ]
+  },
+  {
+    "file": "1f624.png",
+    "name": "鼓气",
+    "collections": [
+      "日常反应"
+    ]
+  },
+  {
+    "file": "1f92b.png",
+    "name": "嘘",
+    "collections": [
+      "日常反应"
+    ]
+  },
+  {
+    "file": "1f986.png",
+    "name": "小鸭",
+    "collections": [
+      "日常反应",
+      "创作素材"
+    ]
+  },
+  {
+    "file": "1f47b-motion.gif",
+    "name": "飘飘幽灵",
+    "collections": [
+      "日常反应",
+      "创作素材"
+    ],
+    "modification": "EmojiBridge 旋转 / 浮动动画，16帧"
+  },
+  {
+    "file": "1f986-motion.gif",
+    "name": "快乐小鸭",
+    "collections": [
+      "日常反应",
+      "创作素材"
+    ],
+    "modification": "EmojiBridge 旋转 / 浮动动画，16帧"
+  },
+  {
+    "file": "1f973-motion.gif",
+    "name": "庆祝摇摆",
+    "collections": [
+      "日常反应",
+      "创作素材"
+    ],
+    "modification": "EmojiBridge 旋转 / 浮动动画，16帧"
+  },
+  {
+    "file": "frog-item.gif",
+    "name": "青蛙 · 掉落物",
+    "collections": [
+      "创作素材"
+    ],
+    "modification": "EmojiBridge 40帧薄片旋转动画"
+  }
+]

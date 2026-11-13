@@ -1,0 +1,26 @@
+{
+  "repository": "https://github.com/Ant39140/wechat_meme_export",
+  "commit": "908adfa3b7a0b4560825c9db2bf234ef5368c8ec",
+  "license": "MIT",
+  "files": [
+    {
+      "local": "LICENSE",
+      "upstream": "LICENSE",
+      "sha256": "1126322e2cc8d165adc4c792eeb195717de2bcc7b39be1ce77959d78e87ef685",
+      "modified": false
+    },
+    {
+      "local": "memory.py",
+      "upstream": "src/wechat_meme_export/memory.py",
+      "sha256": "5af7745a9f3f4635d8ad32058e06b719c1e3aaa33f4e72c28a108019f0886f50",
+      "modified": false
+    },
+    {
+      "local": "decrypt.py",
+      "upstream": "src/wechat_meme_export/decrypt.py",
+      "sha256": "7e71c6d5315edde34422c8a7793e75295ce96ec2537b7bcf742926bdd2900e54",
+      "modified": false
+    }
+  ],
+  "used": "Windows memory reader and AES page decryption; no upstream CLI, key cache or dump commands executed"
+}

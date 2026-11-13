@@ -1,0 +1,74 @@
+{
+  "source_file": "upload/13438072271659594.mp4",
+  "source_duration_seconds": 115.903667,
+  "clips": [
+    {
+      "basename": "xp-original-4-16",
+      "source_start_seconds": 4.0,
+      "source_end_seconds": 16.0,
+      "duration_seconds": 12.0,
+      "purpose": "Continuous original XP pickup sequence for wait animation audition",
+      "processing": "Only time trim and optional codec encoding; no rate, pitch, EQ, synthesis, gain, denoise, or event resequencing"
+    }
+  ],
+  "full_original": {
+    "filename": "xp-original-full.m4a",
+    "processing": "AAC stream copy; all original audio retained, no transcoding"
+  },
+  "source_audio_analysis": {
+    "sample_rate": 48000,
+    "channels": 2,
+    "peak_dbfs": -14.42202662,
+    "rms_dbfs": -32.93314912
+  },
+  "verification": "Frame labels show XP orb absorption; waveform shows continuous overlapping sound, not isolated pickup events. No subjective audible listening performed. HUD sampled every 10 s shows level 1000, including the selected 4–16 s interval; no visual level-up event observed. Waveform alone cannot confirm absence of speech or non-target background sounds. Parent confirmed continuous original audio overrides earlier one-pickup-per-level sound rule for this audition; visual level still increases once per second.",
+  "integration": {
+    "playback_rate": 1,
+    "loop": false,
+    "recommended_gain": 0.35,
+    "note": "Current audition: 12 seconds of continuous original source, simulated completion at 12.25 seconds, then separate success-only levelup. Sound settings retain original playback rate 1; no old single pickup overlay."
+  },
+  "files": [
+    {
+      "filename": "xp-original-4-16.wav",
+      "bytes": 2304078,
+      "sha256": "6883de01e6313ba322527aa3346db029b177acf9a0bf43273ff6d0e26f3ec5d1",
+      "duration": 12.0,
+      "sample_rate": "48000",
+      "channels": 2
+    },
+    {
+      "filename": "xp-original-4-16.mp3",
+      "bytes": 222204,
+      "sha256": "738d654b8ed2004f8bda8804987a54d481ca1f21b97c382c45891d93a188737d",
+      "duration": 12.024,
+      "sample_rate": "48000",
+      "channels": 2
+    },
+    {
+      "filename": "xp-original-4-16.ogg",
+      "bytes": 201541,
+      "sha256": "e95f0926a128662bd2895f3cce9a00898e3bd855e40af0827722bc89d2a109cc",
+      "duration": 12.0,
+      "sample_rate": "48000",
+      "channels": 2
+    },
+    {
+      "filename": "xp-original-full.m4a",
+      "bytes": 1631482,
+      "sha256": "76de3aa5680262c8aad1caea115ad247bad09be866506e13c040f249c0366fce",
+      "duration": 115.903667,
+      "sample_rate": "48000",
+      "channels": 2
+    },
+    {
+      "filename": "xp-original-4-16-96k.mp3",
+      "bytes": 144780,
+      "sha256": "c894fa7266a929d5daa9ef6199d060415715c4b107507ed8e539906d6b9d23eb",
+      "duration": 12.024,
+      "sample_rate": "48000",
+      "channels": 2,
+      "bitrate": 96000
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "repository": "https://github.com/CursorTouch/Windows-MCP",
+  "commit": "b74c507d9e709223a0904cf08019edf55f2a75bb",
+  "upstream_file": "src/windows_mcp/desktop/service.py",
+  "reference_method": "Desktop.bring_window_to_top",
+  "adapted_file": "src/emoji_bridge/source_focus.py",
+  "license": "MIT",
+  "license_source": "LICENSE.md",
+  "license_sha256": "53550ce178bf217fa31e71e3193d2b1133626be0a4f2077dda249032a43a6bc6",
+  "scope": "two-thread input attachment at task-start, adapted to ctypes and project guards; no server, UIA module, telemetry or dependencies bundled",
+  "changes": ["no global AllowSetForegroundWindow call", "no guessed click or simulated key", "identity, cancel and input checks", "stop on intervening foreground", "reverse detach of successful attachments in finally", "QQ source reader only"]
+}

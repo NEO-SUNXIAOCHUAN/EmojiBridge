@@ -1,0 +1,5 @@
+Twemoji v16.0.1 — Copyright Twitter, Inc. and other contributors.
+https://github.com/jdecked/twemoji/tree/v16.0.1
+Graphics: CC BY 4.0, https://creativecommons.org/licenses/by/4.0/
+EmojiBridge renders these vectors to transparent PNG and creates motion variants and editable compositions.
+内置示例不是客户端收藏。SVG 原图、署名与许可随包保留。

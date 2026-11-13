@@ -1,0 +1,7 @@
+{
+  "package": "tkinterdnd2",
+  "version": "0.4.3",
+  "wheel_sha256": "8804f5d2e2a99713ec93e85384397fec6bf66fdf2065e3750938d55018971c4a",
+  "source": "https://pypi.org/project/tkinterdnd2/0.4.3/",
+  "scope": "unmodified Python wrapper and Windows x64 TkDND binaries/scripts; other platforms excluded"
+}

@@ -1,0 +1,4 @@
+# Optional worker-only dependencies; install to a separate target, NOT the app runtime.
+# Pillow is reused from the app. CPU, Windows x64 / Python 3.12 verified.
+onnxruntime==1.23.2
+numpy==2.3.5
