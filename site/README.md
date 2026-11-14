@@ -53,18 +53,18 @@
 
 ## 下载与开始使用
 
-**下载 ZIP → 全部解压 → 双击 EmojiBridge.exe。** 普通用户不需要运行命令行或编译源码。
+**S0168 R2 · 下载完整 ZIP → 全部解压 → 双击 EB/EmojiBridge.exe。** 普通用户无需编译源码。
 
 | 下载项 | 怎么选 |
 | --- | --- |
-| Windows x64 主程序 | 先用互通、素材库与编辑功能，按需准备组件 |
-| 完整包（含模板扩展） | 希望模板扩展一起下载；与主程序二选一 |
-| 模板扩展 | 已有主程序，下载发行说明中注明兼容的扩展 |
-| 宣传片同款表情包 | 独立可选素材，解压后多选导入 |
+| [完整 ZIP · 1.35 GB（推荐）](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/releases/download/S0168R2/EmojiBridge-S0168-download-ready-trial-full.zip) | 新用户及旧正式版用户使用，三种抠图模型与默认本地功能已随包 |
+| [同版 7z · 1.19 GB](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/releases/download/S0168R2/EmojiBridge-S0168R2-full-lossless.7z) | 与 ZIP 内容相同；使用支持 7z 的解压工具 |
+| [宣传片同款表情包 · 707 MB](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/releases/download/S0163/EmojiBridge-promo-assets-20261114.zip) | 独立可选，解压后多选导入 |
+| [对应公开源码](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/releases/download/S0168R2/EmojiBridge-S0168R2-public-source.zip) · [SHA256 校验](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/releases/download/S0168R2/SHA256SUMS-release-S0168R2.txt) | 开发者或需要核验下载内容的用户 |
 
-下载链接将在首发版本确定后接入。抠主体模型和视频处理组件按需准备；不会为了同款素材而强制下载整套宣传片资源。
+本次修复部分电脑下载后 DLL 加载失败的问题。完整包包含模板、识字与跟随、视频处理和默认 tiny 字幕模型，无需首次下载这些默认组件；更大的字幕模型仍可选。缺少系统 WebView2 时，按启动提示安装微软官方组件。
 
-[下载说明](https://neo-sunxiaochuan.github.io/EmojiBridge/docs/DOWNLOADS.html) · [素材导入方法](https://neo-sunxiaochuan.github.io/EmojiBridge/docs/MATERIALS.html) · [兼容与使用条件](https://neo-sunxiaochuan.github.io/EmojiBridge/docs/COMPATIBILITY.html)
+保存作品并退出旧版，解压到新文件夹启动；无需删除个人素材库。S0167 专用补丁的适用范围见 [下载说明](https://neo-sunxiaochuan.github.io/EmojiBridge/docs/DOWNLOADS.html)。
 
 <details>
 <summary>第一次使用，从哪里开始？</summary>
@@ -87,3 +87,9 @@
 ## 作者与许可
 
 Created by **Neo**。项目自有源码采用 **GPL-3.0-only**；第三方代码及素材保留各自许可与来源，表情包、音乐、漫画等不自动适用源码许可。
+
+## 从源码运行与构建
+
+Windows x64、带 Tk 的 Python 3.12 与 Microsoft WebView2。桌面入口还需要 `runtime/desktop` 中的桌面依赖；完整构建的组件准备与固定校验值见 [BUILDING.md](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/blob/main/BUILDING.md)。公开源码与本版完整包对应，产品提交记录在 [SOURCE_BUILD.json](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/blob/main/SOURCE_BUILD.json)。
+
+详见 [功能说明](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/blob/main/FEATURES.md)、[第三方声明](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/blob/main/THIRD_PARTY_NOTICES.md)及[资源核对记录](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/blob/main/RELEASE_RIGHTS.md)。
