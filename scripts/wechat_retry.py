@@ -44,7 +44,16 @@ def staged_evidence(assets,root=DATA_ROOT):
         if any(r.get('file_submission')!='selected_not_sent' for r in reports):return None
         folders={Path(p['prior_report']).parent.parent for p in proofs}
         if len(folders)!=1:return None
-        folder=next(iter(folders));intent=catalog.read(folder/'send-intent.json')
+        folder=next(iter(folders));intent_path=folder/'send-intent.json'
+        if not intent_path.is_file():
+            groups=catalog.read(folder/'groups.json')['groups']
+            wanted={Path(a).resolve() for a in assets}
+            matches=[g for g in groups if {Path(a).resolve() for a in g['assets']}==wanted]
+            if len(matches)!=1:return None
+            number=matches[0]['number']
+            if not isinstance(number,int) or number<1:return None
+            intent_path=folder/'groups'/str(number)/'send-intent.json'
+        intent=catalog.read(intent_path)
         if intent.get('destination')!='文件传输助手':return None
         if {Path(a).resolve() for a in intent['assets']}!={Path(a).resolve() for a in assets}:return None
         return proofs

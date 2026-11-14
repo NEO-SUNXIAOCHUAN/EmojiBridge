@@ -41,12 +41,12 @@ def enrich(library_path,client,ids,cancel,progress,priority_file=None):
     if not ids or len(ids)>36 or not set(ids)<=selected.keys():raise ValueError('所选条目已改变，请更新后重试')
     results=[];deferred=[]
     if client=='qq':
-        from qq_appearance_prepare import prepare
+        from qq_appearance_prepare import prepare,preparation_session
         progress(stage='校验已读 QQ 条目的本地原件；不操作客户端')
     if client=='wechat':
         import wechat_acquire as acquire
         session=acquire.index_session()
-    else:session=nullcontext()
+    else:session=preparation_session()
     with session:
         for n,ident in enumerate(prioritized_ids(ids,priority_file,cancel,deferred)):
             if cancel.exists():break

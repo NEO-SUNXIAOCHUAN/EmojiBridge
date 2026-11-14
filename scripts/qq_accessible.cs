@@ -58,6 +58,7 @@ public sealed class QQAccessibleTree : IDisposable {
     public sealed class Node {
         internal IAccessible Acc;
         internal object Child;
+        internal Node FavoriteLabel;
         public Node Parent;
         public int Role;
         public string ClassName;
@@ -100,16 +101,27 @@ public sealed class QQAccessibleTree : IDisposable {
                 throw new InvalidOperationException("qq_msaa_emoji_button_changed");
             Acc.accDoDefaultAction(Child);
         }
-        public void SelectFavorites() {
-            if (Role != 43 || Name != "我的收藏" || !Visible || (State & 1) != 0)
+        public bool SelectFavorites() {
+            bool classic = Role == 43 && Name == "我的收藏";
+            bool grouped = HasClass("tabs-container-item") && FavoriteLabel != null
+                && FavoriteLabel.Within(this) && FavoriteLabel.Role == 20
+                && FavoriteLabel.HasClass("q-svg-icon") && FavoriteLabel.Name == "切换我的收藏按钮"
+                && FavoriteLabel.Visible && Parent != null && Parent.HasClass("tabs-container");
+            if ((!classic && !grouped) || !Visible || (State & 1) != 0)
                 throw new InvalidOperationException("qq_msaa_favorite_tab_changed");
             // Called only within the verified panel while its personal grid is absent.
             // A checked/pressed/mixed tab with no grid must settle; never toggle it off.
-            if ((State & (8 | 16 | 32)) != 0) throw new InvalidOperationException("qq_uia_tab_state_unconfirmed");
+            if ((State & (8 | 16 | 32)) != 0 || HasClass("tabs-container-item-active"))
+                throw new InvalidOperationException("qq_uia_tab_state_unconfirmed");
+            // Some Chromium grouping nodes expose geometry but no action.
+            // Returning false performs NOTHING; caller may issue one guarded
+            // click on this freshly proven semantic tab, never an indexed tab.
+            if (String.IsNullOrWhiteSpace(Acc.get_accDefaultAction(Child))) return false;
             Acc.accDoDefaultAction(Child);
+            return true;
         }
         public void RevealCell() {
-            if (!HasClass("collection-sticker")) throw new InvalidOperationException("qq_uia_cell_changed");
+            if (!HasClass("collection-sticker") && !HasClass("sticker-list-item")) throw new InvalidOperationException("qq_uia_cell_changed");
             IntPtr obj = IA2(Acc);
             if (obj == IntPtr.Zero) throw new InvalidOperationException("qq_msaa_scroll_unavailable");
             try {
@@ -127,12 +139,28 @@ public sealed class QQAccessibleTree : IDisposable {
         return Nodes.FindAll(n => n.Role==43 && (ancestor==null || n.Within(ancestor)) && (!toolbar || n.InToolbar)
             && (!visible || n.Visible) && n.Name==name).ToArray();
     }
+    public Node[] FavoriteTabs(Node panel) {
+        var result = new List<Node>(Buttons("我的收藏",panel,false,true));
+        foreach (Node label in Classes("q-svg-icon",panel,true)) {
+            if (label.Role != 20 || label.Name != "切换我的收藏按钮") continue;
+            Node tab=label.Parent;
+            while (tab != null && tab.Within(panel) && !tab.HasClass("tabs-container-item")) tab=tab.Parent;
+            if (tab == null || !tab.Within(panel) || !tab.Visible || tab.Parent == null
+                || !tab.Parent.HasClass("tabs-container")) continue;
+            tab.FavoriteLabel=label;
+            if (!result.Contains(tab)) result.Add(tab);
+        }
+        return result.ToArray();
+    }
+    public Node[] FavoriteCells(Node grid) {
+        return Nodes.FindAll(n => (n.HasClass("collection-sticker") || n.HasClass("sticker-list-item")) && n.Within(grid)).ToArray();
+    }
     public Hashtable[] Cells(Node grid, long hwnd) {
         var result=new List<Hashtable>();int[] box=grid.Rect;
-        foreach(Node n in Classes("collection-sticker",grid,false)) {
+        foreach(Node n in FavoriteCells(grid)) {
             int[] b=n.Rect;
             bool full=n.Visible && b[0]>=box[0] && b[1]>=box[1] && b[2]<=box[2] && b[3]<=box[3] && b[2]>b[0] && b[3]>b[1];
-            result.Add(new Hashtable{{"rect",b},{"fully_visible",full},{"runtime_id",new long[]{-161,hwnd,n.UniqueId}}});
+            result.Add(new Hashtable{{"rect",b},{"class_name",n.HasClass("sticker-list-item") ? "sticker-list-item" : "collection-sticker"},{"fully_visible",full},{"runtime_id",new long[]{-161,hwnd,n.UniqueId}}});
         }
         return result.ToArray();
     }
@@ -157,7 +185,7 @@ public sealed class QQAccessibleTree : IDisposable {
                 n.ClassName = self ? ClassAttribute(n.Acc) : "";
                 if (!self) continue;
                 // Never inspect a sticker's image or a button's icon/text.
-                if (n.Role == 43 || n.HasClass("collection-sticker") || n.HasClass("sticker-list__import")) continue;
+                if (n.Role == 43 || n.HasClass("collection-sticker") || n.HasClass("sticker-list-item") || n.HasClass("sticker-list__import")) continue;
                 int count = n.Acc.accChildCount;
                 if (count < 0 || count + Nodes.Count + queue.Count > 4096)
                     throw new InvalidOperationException("qq_msaa_tree_limit");

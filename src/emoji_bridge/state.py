@@ -18,25 +18,30 @@ def sha(path):
 
 
 def save_json(path, value, *, compact=False):
-    path = Path(path)
+    path = Path(path).resolve()
     path.parent.mkdir(parents=True, exist_ok=True)
-    temp = path.with_suffix(path.suffix + '.tmp')
-    with temp.open('w',encoding='utf-8') as f:
-        if compact:f.write(json.dumps(value,ensure_ascii=False,separators=(',',':')))
-        else:json.dump(value,f,ensure_ascii=False,indent=2)
-        f.flush()
-        os.fsync(f.fileno())
+    # Concurrent saves must never share or replace another writer's staging
+    # file. Keep it on the destination volume for atomic replacement.
+    temp = path.with_name(path.name + '.' + uuid.uuid4().hex + '.tmp')
     # Windows readers (including our GUI) may briefly hold a handle without
     # FILE_SHARE_DELETE. Preserve the old complete record until an atomic
     # replacement succeeds; do not truncate it or abandon preparation after
     # a single sharing violation. A permanent denial still fails boundedly.
-    for attempt in range(10):
-        try:
-            temp.replace(path)
-            break
-        except PermissionError:
-            if attempt==9:raise
-            time.sleep(.01*(attempt+1))
+    try:
+        with temp.open('x',encoding='utf-8') as f:
+            if compact:f.write(json.dumps(value,ensure_ascii=False,separators=(',',':')))
+            else:json.dump(value,f,ensure_ascii=False,indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        for attempt in range(10):
+            try:
+                temp.replace(path)
+                break
+            except PermissionError:
+                if attempt==9:raise
+                time.sleep(.01*(attempt+1))
+    finally:
+        temp.unlink(missing_ok=True)
 
 
 class ResourceBusy(RuntimeError):

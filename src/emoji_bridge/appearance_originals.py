@@ -20,6 +20,9 @@ _evidence_cache=ContextVar('appearance_evidence_cache',default=None)
 @contextmanager
 def evidence_session():
     """Only reuse parsed JSON within one preparation, never file validation."""
+    if _evidence_cache.get() is not None:
+        yield
+        return
     token=_evidence_cache.set(OrderedDict())
     try:yield
     finally:_evidence_cache.reset(token)

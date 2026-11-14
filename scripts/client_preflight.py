@@ -30,7 +30,7 @@ def inspect_client(client):
     if visible:candidates=visible
     if client=='qq':
         from emoji_bridge.qq_controls import select_main_candidate
-        selected=select_main_candidate(exe,[c[0] for c in candidates])
+        selected=select_main_candidate(exe,[c[0] for c in candidates],allow_pending=True)
         candidates=[c for c in candidates if (c[0].hwnd,c[0].pid)==(selected.hwnd,selected.pid)]
     if len(candidates)!=1:raise win.StopAutomation('client_main_window_missing_or_ambiguous')
     window,rect,_=candidates[0]

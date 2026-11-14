@@ -81,6 +81,32 @@ def observed_cells(image,offset):
     return result
 
 
+def visual_observed_cells(image,offset,max_bottom=None):
+    """Conservative outer bounds at fractional DPI; never truncate a pixel.
+
+    Native Chromium bounds can enclose a fractional edge. Rounding both edges
+    to nearest can make a 58 logical-pixel square 86 rather than 87 pixels at
+    150%. Preserve the whole cell; existing full-image matching handles <=2px.
+    """
+    import math
+    scale=min((1,1.25,1.5),key=lambda s:abs(image.width-434*s))
+    background=np.median(np.asarray(image,dtype=float).reshape(-1,3),axis=0)
+    result=[]
+    for row in range(int((offset+image.height)/(70*scale))+1):
+        y=math.floor((17+70*row)*scale)-offset
+        bottom=math.ceil((75+70*row)*scale)-offset
+        if y<0 or bottom>min(content_bottom(image),max_bottom if max_bottom is not None else image.height):continue
+        for col in range(6):
+            if (row,col)==(0,0):continue
+            x=math.floor((13+70*col)*scale);right=math.ceil((71+70*col)*scale)
+            arr=np.asarray(image.crop((x,y,right,bottom)),dtype=float)
+            coverage=float((np.max(np.abs(arr-background),axis=2)>18).mean())
+            if coverage<.06:continue
+            result.append(dict(position=row*6+col,rect=[x,y,right,bottom],content_fraction=round(coverage,4),
+                               membership='visual_candidate_not_native_identity'))
+    return result
+
+
 def native_observed_cells(image, offset, state):
     """Only actual personal-favorite controls, excluding built-in game tiles.
 
@@ -89,6 +115,9 @@ def native_observed_cells(image, offset, state):
     """
     if not state.get('favorites_open'):
         raise ValueError('qq_uia_personal_favorites_not_open')
+    if state.get('backend')=='visual':
+        if not state.get('visual_grid_proven'):raise ValueError('favorite_panel_geometry_changed')
+        return visual_observed_cells(image,offset,max_bottom=state['grid_rect'][3]-round(state['panel_rect'][1]+8*(state['panel_rect'][2]-state['panel_rect'][0])/450))
     panel=state['panel_rect'];scale=(panel[2]-panel[0])/450
     origin = (round(panel[0]+8*scale),round(panel[1]+8*scale))
     result = []; known = set()
@@ -99,9 +128,13 @@ def native_observed_cells(image, offset, state):
         x, y, right, bottom = box
         # The current raster reader has a stricter footer exclusion than UIA.
         if y < 0 or bottom > min(image.height,round(QQ_CONTENT_BOTTOM*scale)): continue
-        col=round((x/scale-13)/70);row=round(((y+offset)/scale-17)/70)
-        expected=(round((13+70*col)*scale),round((17+70*row)*scale)-offset,
-                  round((13+70*col+58)*scale),round((17+70*row+58)*scale)-offset)
+        # Two observed native layouts; never infer membership from dimensions.
+        # The alternate renderer exposes 64px cells in the named favorite grid.
+        alternate=cell.get('class_name')=='sticker-list-item'
+        left,top,edge,pitch=(10,10,64,64) if alternate else (13,17,58,70)
+        col=round((x/scale-left)/70);row=round(((y+offset)/scale-top)/pitch)
+        expected=(round((left+70*col)*scale),round((top+pitch*row)*scale)-offset,
+                  round((left+70*col+edge)*scale),round((top+pitch*row+edge)*scale)-offset)
         if any(abs(a-b)>2 for a,b in zip(box,expected)):
             raise ValueError('qq_uia_cell_grid_mismatch')
         if not 0 <= col < 6 or row < 0:

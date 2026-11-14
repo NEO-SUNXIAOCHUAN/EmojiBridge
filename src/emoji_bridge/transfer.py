@@ -31,6 +31,12 @@ INTERRUPTIONS={'foreground_changed','foreground_switch_denied','window_not_visib
     'wechat_popup_not_unique','wechat_add_settle_timeout','wechat_add_rejected','message_list_outside_window','message_row_identity_ambiguous',
     'input_not_cleared_after_send','sent_resume_requires_empty_composer','uia_control_not_unique'}
 
+INTERRUPTIONS.update({'wechat_visual_'+name for name in (
+    'open_helper_first','helper_not_confirmed','selected_helper_not_confirmed',
+    'helper_icon_unproven','composer_unproven','file_button_unproven','send_button_unproven',
+    'empty_draft_conflict','runtime_missing','chinese_ocr_unavailable','ocr_failed','ocr_timeout',
+    'layout_unsupported','action_unsupported','ocr_geometry_invalid')})
+
 
 def make_export_plan(selected,path):
     """Queue explicit original-export pairs using validated source receipts."""

@@ -3,7 +3,7 @@ from pathlib import Path
 import argparse,hashlib,json,re,shutil,subprocess,zipfile
 ROOT=Path(__file__).resolve().parents[1]
 TOP={'LICENSE','COPYRIGHT.md','README.md','THIRD_PARTY_NOTICES.md','RELEASE_RIGHTS.md',
-     'RELEASE_NOTES.md','FEATURES.md','TEMPLATE_CATALOG.json','requirements-release.txt','requirements-cutout.txt'}
+     'RELEASE_NOTES.md','FEATURES.md','BUILDING.md','TEMPLATE_CATALOG.json','requirements-release.txt','requirements-cutout.txt'}
 BUILD_SCRIPTS={'build_pilot.py','build_release_variants.py','export_public_source.py',
                'portable_launcher.cs','portable_launcher.manifest'}
 DOCS={'portable-使用说明.txt','pilot-使用说明.txt','demo-使用说明.txt','S0146-候选包使用说明.txt'}
@@ -15,7 +15,7 @@ def selected(name):
     if p.parts[0]=='scripts':
         return p.name in BUILD_SCRIPTS or (not p.name.startswith(('check_','drop_','build_'))
             and (p.suffix in ('.py','.ps1') or p.name=='qq_accessible.cs'))
-    return (p.parts[0]=='tests' and p.name=='test_builtin_upgrade_S0162.py') or (p.parts[0]=='docs' and p.name in DOCS)
+    return (p.parts[0]=='tests' and p.name in ('test_builtin_upgrade_S0162.py','test_download_startup_S0168.py')) or (p.parts[0]=='docs' and p.name in DOCS)
 def digest(data):return hashlib.sha256(data).hexdigest()
 def export(destination):
     destination=Path(destination).resolve()

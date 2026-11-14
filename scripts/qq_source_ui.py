@@ -22,7 +22,7 @@ class SourceQQ(QQ):
 
     def bind(self):
         super().bind()
-        self.report['source_locator']='native_favorite_controls'
+        self.report['source_locator']='visual_favorite_observations' if self.controls._visual else 'native_favorite_controls'
 
     def panel_box(self, state=None):
         from emoji_bridge.client_geometry import qq_panel_box
@@ -37,6 +37,7 @@ class SourceQQ(QQ):
         if cancel and Path(cancel).exists():
             raise StopAutomation('cancel_requested')
         state = self.controls.open()
+        if state.get('backend')=='visual':state=self.controls.top(state)
         # The grid itself can appear before QQ has populated any favorites.
         # Observe it without toggling the panel again or treating it as empty.
         if not state.get('cells'):
@@ -49,6 +50,11 @@ class SourceQQ(QQ):
         """Reveal a nearby loaded cell, preserving visual overlap for identity."""
         state = self.controls.read()
         self.panel_box(state)
+        if state.get('backend')=='visual':
+            box=state['grid_rect'];x,y=self.window.rect[:2]
+            scroll(self.window,self.exe,round((box[0]+box[2])/2-x),round((box[1]+box[3])/2-y),-1)
+            time.sleep(.2)
+            return self.controls.read()
         cells = state.get('cells', [])
         visible = [n for n, cell in enumerate(cells) if cell['fully_visible']]
         if not visible:
@@ -62,6 +68,12 @@ class SourceQQ(QQ):
         """One bounded tail wait; a quiet loaded tail is not a server total."""
         started = time.monotonic()
         before = previous['loaded_cells']
+        if previous.get('backend')=='visual':
+            # No synthetic loaded count. Observe a bounded quiet tail; callers
+            # retain partial results and never infer the cloud total from it.
+            while time.monotonic()-started<min(timeout,2):
+                self.controls.read();time.sleep(.1)
+            return self.controls.read()
         while True:
             state = self.controls.read()  # identity, focus and cancel checked
             self.panel_box(state)

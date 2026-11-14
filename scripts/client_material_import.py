@@ -128,7 +128,7 @@ def run(path,library_path,store,cancel,*,progress=None,acquire=None,verify=None)
                     result=acquire_selected(item,library['clients'][client].get('source_report'),cancel)
                 else:
                     if not options.get('allow_source_ui',True):
-                        job.update(status='waiting',reason='所选 QQ 表情的完整原件尚未就绪；请在 QQ 来源点击“更新”，完成后继续此任务')
+                        job.update(status='waiting',reason='所选 QQ 表情的完整原件仍未取得或对应不明确；已保留任务，待来源加载后点“继续 / 重试未完成”，无需等待其他条目')
                         continue
                     from qq_cache_acquire import acquire_or_resume
                     result=acquire_or_resume(item,cancel)

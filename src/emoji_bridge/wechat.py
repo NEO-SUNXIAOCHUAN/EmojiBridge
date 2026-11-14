@@ -1,5 +1,6 @@
 """Bounded WeChat UI Automation bridge; only the user's File Transfer Assistant."""
 import json
+import os
 from pathlib import Path
 import subprocess
 from .client_sources import powershell_executable
@@ -12,6 +13,15 @@ from .windows import StopAutomation,qq_windows,activate,guard,file_version,captu
 
 ROOT=Path(__file__).resolve().parents[2]
 LAST_UIA_DIAGNOSTIC={}
+
+
+def empty_provider_failure(reason,report):
+    startup=report.get('startup_accessibility',{})
+    missing=report.get('last_uia_failure',{})
+    return (reason=='wechat_control_missing' and
+            type(startup.get('nodes_before')) is int and 0<=startup['nodes_before']<=2 and
+            missing.get('matches')==0 and
+            missing.get('control') in {'header','composer','messages','sessions'})
 
 
 def safe_uia_diagnostic(action,data):
@@ -42,6 +52,8 @@ class WeChat:
     def __init__(self,exe,report):
         self.exe=Path(exe);self.report=report;self.window=None;self.worker=None;self.persistent=False
         self.cancel_check=None
+        self.visual=None
+        self.visual_trial=False
 
     def check_cancel(self):
         if self.cancel_check:self.cancel_check()
@@ -65,7 +77,13 @@ class WeChat:
         opened=[w for w in qq_windows(self.exe) if w.pid==self.window.pid and w.kind=='Qt51514QWindowToolSaveBits']
         if opened:
             if len(opened)!=1:raise StopAutomation('wechat_popup_not_unique')
-            activate(opened[0],self.exe)
+            # Qt search menus are non-activating and may be destroyed on focus
+            # change. Activate the owner, then re-enumerate instead of holding
+            # a stale popup handle through activation.
+            activate(self.window,self.exe,cancel_check=self.check_cancel,accessible_fallback=True)
+            opened=[w for w in qq_windows(self.exe) if w.pid==self.window.pid and w.kind=='Qt51514QWindowToolSaveBits']
+            if len(opened)>1:raise StopAutomation('wechat_popup_not_unique')
+        if opened:
             # Startup search and emoji selection share the Qt popup class.
             # Recognize the exact built-in function before treating it as an
             # emoji panel. Never dismiss an unknown popup on resume.
@@ -89,7 +107,21 @@ class WeChat:
         activate(self.window,self.exe,cancel_check=self.check_cancel,accessible_fallback=True)
         self.report['client_version']=version
         self.report['window']=self.window.__dict__
-        return self.ensure_own_session(wait_ready=True)
+        trial=(os.environ.get('EMOJI_BRIDGE_WECHAT_VISUAL_TRIAL')=='1' or
+               (ROOT/'WECHAT_VISUAL_TRIAL').is_file())
+        self.visual_trial=trial
+        force=trial and os.environ.get('EMOJI_BRIDGE_WECHAT_VISUAL_FORCE_TEST')=='1'
+        if force:
+            self.report['visual_forced_test']=True
+        else:
+            try:return self.ensure_own_session(wait_ready=True)
+            except StopAutomation as exc:
+                # Only the proven empty provider, before any submit, can switch.
+                # Permission/focus/ambiguity and unknown submission never do.
+                if not (trial and str(exc)=='wechat_visual_empty_provider'):raise
+        from .wechat_visual_bridge import VisualBridge
+        self.visual=VisualBridge(self)
+        return self.visual.bind()
 
     def ensure_own_session(self,wait_ready=False):
         """Navigate only at task start, to the exact native helper entry.
@@ -152,7 +184,10 @@ class WeChat:
                 failure=self.report.get('last_uia_failure',{})
                 if (str(exc)!='wechat_control_missing' or failure.get('matches')!=0
                         or failure.get('control') not in {'header','composer','messages','sessions'}
-                        or time.monotonic()>=deadline):raise
+                        or time.monotonic()>=deadline):
+                    if self.visual_trial and empty_provider_failure(str(exc),self.report):
+                        raise StopAutomation('wechat_visual_empty_provider') from exc
+                    raise
                 self.check_cancel()
                 if waits==0:
                     state=self.uia('prepare-accessibility')
@@ -200,9 +235,13 @@ class WeChat:
             time.sleep(.08)
 
     def uia(self,action='snapshot',window=None):
+        if self.visual is not None:return self.visual.request(action,window)
+        return self.native_uia(action,window)
+
+    def native_uia(self,action='snapshot',window=None):
         self.check_cancel()
         window=window or self.window
-        guard(window,self.exe,owner=self.window if action in ('menu','own-search-target','import-status') else None)
+        guard(window,self.exe,owner=self.window if action in ('menu','menu-observe','own-search-target','import-status') else None)
         args=[str(powershell_executable()),'-NoProfile','-ExecutionPolicy','Bypass',
               '-File',str(ROOT/'scripts/wechat_uia.ps1'),'-WindowHandle',str(window.hwnd),
               '-ClientProcessId',str(self.window.pid),'-Executable',str(self.exe),'-Action',action,
@@ -211,7 +250,7 @@ class WeChat:
             from .uia_worker import UIAWorker,UIA_FAILURES
             if self.worker is None:self.worker=UIAWorker(ROOT/'scripts/wechat_uia.ps1')
             try:
-                data=self.worker.request(cancel_check=self.cancel_check,timeout_seconds=2 if action=='import-status' else 15,
+                data=self.worker.request(cancel_check=self.cancel_check,timeout_seconds=2 if action in ('import-status','menu-observe') else 15,
                     window=window.hwnd,pid=self.window.pid,exe=str(self.exe),action=action,parent=self.window.hwnd)
             except StopAutomation as exc:
                 # A timed-out helper was closed by request(); no late reply may

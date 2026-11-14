@@ -16,6 +16,7 @@ import urllib.request
 import urllib.error
 import socket
 import errno
+import zipfile
 
 MODEL = 'u2net'
 MODEL_URL = 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2net.onnx'
@@ -112,9 +113,9 @@ def ensure_runtime(cancel=None, progress=None):
 
 def model_error(exc):
     if isinstance(exc,urllib.error.HTTPError):
-        return f'模型下载站返回 HTTP {exc.code}；可稍后重试，或在“离线模型”导入模型文件'
+        return f'模型下载站返回 HTTP {exc.code}；可稍后重试，或在“模型文件”导入对应 ONNX 文件'
     if isinstance(exc,(urllib.error.URLError,TimeoutError,socket.timeout)):
-        return '无法连接模型下载站（GitHub）或连接超时；可重试，或在“离线模型”导入模型文件'
+        return '本地尚无所选模型，连接模型下载站（GitHub）失败或超时；请在“模型文件”导入对应 ONNX 文件，或安装配套模型包'
     if isinstance(exc,PermissionError):return '模型目录不可写或文件被占用；请检查保存目录权限后重试'
     if isinstance(exc,OSError) and (exc.errno==errno.ENOSPC or getattr(exc,'winerror',None)==112):
         return '模型保存磁盘空间不足；请释放空间后重试'
@@ -124,10 +125,28 @@ def model_error(exc):
 def bundled_models():
     return Path(__file__).resolve().parents[2]/'runtime'/'cutout-models'
 
+def model_url(name):
+    return 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/'+MODELS[name]['file']
+
+def model_present(name):
+    return any((folder/f'{name}.onnx').is_file() for folder in (cache_root()/'models',bundled_models()))
+
 
 def import_model(source,root=None,*,name=MODEL,cancel=None,progress=None):
     """Copy a verified offline model atomically; never move the user's file."""
     root=Path(root) if root is not None else cache_root()/'models'
+    if Path(source).suffix.lower()=='.zip':
+        check_cancel(cancel);root.mkdir(parents=True,exist_ok=True)
+        with zipfile.ZipFile(source) as archive:
+            candidates=[i for i in archive.infolist() if not i.is_dir() and Path(i.filename).name in (f'{name}.onnx',MODELS[name]['file'])]
+            if len(candidates)!=1 or not 0<candidates[0].file_size<=300*1024*1024:
+                raise ValueError('模型包中没有唯一对应的模型，请选择与当前选项一致的配套模型包')
+            # Copy one named member only; never extract paths or run archive code.
+            with tempfile.TemporaryDirectory(dir=root,prefix='import-') as directory:
+                extracted=Path(directory)/f'{name}.onnx'
+                with archive.open(candidates[0]) as src,extracted.open('wb') as dst:
+                    while block:=src.read(1024*1024):check_cancel(cancel);dst.write(block)
+                return import_model(extracted,root,name=name,cancel=cancel,progress=progress)
     part=None
     try:
         check_cancel(cancel);root.mkdir(parents=True,exist_ok=True)
@@ -154,7 +173,10 @@ def ensure_model(root, cancel=None, progress=None, name=MODEL):
         check_cancel(cancel);root.mkdir(parents=True,exist_ok=True)
         if model.exists() and model_digest(model)==spec['md5']:return model
         offline=bundled_models()/f'{name}.onnx'
-        if offline.is_file():return import_model(offline,root,name=name,cancel=cancel,progress=progress)
+        if offline.is_file():
+            if model_digest(offline)!=spec['md5']:raise RuntimeError('随包模型校验失败，请重新解压完整包或导入完整模型文件')
+            check_cancel(cancel)
+            return offline
         notify(progress,'首次下载 '+spec['label']+' 模型；仅下载到本机')
         request=urllib.request.Request('https://github.com/danielgatis/rembg/releases/download/v0.0.0/'+spec['file'],headers={'User-Agent':'EmojiBridge-local-cutout'})
         for attempt in range(2):

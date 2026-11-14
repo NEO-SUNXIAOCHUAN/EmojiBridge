@@ -23,6 +23,9 @@ ARCHIVE_SHA256='60f467265b1e312373dbcd92200c2618a74850f98d3d078e94296bb3fa2047ba
 TOOLS_ROOT=Path(os.environ.get('LOCALAPPDATA',Path.home()))/'EmojiBridgePilot'/'tools'/('ffmpeg-'+VERSION)
 _install_lock=threading.Lock()
 
+def bundled_tools():
+    return Path(__file__).resolve().parents[2]/'runtime'/'ffmpeg'
+
 
 def _check(cancel):
     if cancel is not None and cancel.is_set():raise CancelledError('已取消，原文件保留')
@@ -39,6 +42,8 @@ def ensure_tools(*,cancel=None,progress=None):
         folder=Path(custom);found=(folder/'ffmpeg.exe',folder/'ffprobe.exe')
         if all(p.is_file() for p in found):return found
         raise ValueError('指定的视频组件目录缺少 ffmpeg.exe 或 ffprobe.exe')
+    found=tuple(bundled_tools()/name for name in ('ffmpeg.exe','ffprobe.exe'))
+    if all(p.is_file() for p in found):return found
     system=tuple(shutil.which(name) for name in ('ffmpeg','ffprobe'))
     if all(system):return tuple(Path(p) for p in system)
     found=(TOOLS_ROOT/'ffmpeg.exe',TOOLS_ROOT/'ffprobe.exe')

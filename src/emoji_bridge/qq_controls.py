@@ -1,4 +1,4 @@
-"""Bounded native QQ readiness. No image templates, MCP or individual cell action."""
+"""Bounded QQ readiness; native providers first, verified visual fallback last."""
 from pathlib import Path
 import time
 
@@ -11,17 +11,18 @@ from .client_geometry import client_scale
 MAIN_DIAGNOSTICS={}
 
 
-def select_main_candidate(exe,candidates,cancel=None):
+def select_main_candidate(exe,candidates,cancel=None,allow_pending=False):
     """Disambiguate eligible QQ windows by the same toolbar as source reads.
 
     A lone geometry candidate still needs control checks before actual input.
-    No titles, contacts or foreground preference are used to break a tie.
+    Any verified chat in the same account process can host favorites. Prefer
+    the foreground chat, otherwise keep the current top-to-bottom order.
     """
     MAIN_DIAGNOSTICS.clear()
     MAIN_DIAGNOSTICS.update(candidate_count=len(candidates),native_disambiguation=len(candidates)>1,selected=False)
     if not candidates:raise StopAutomation('client_main_window_missing_or_ambiguous')
     if cancel and Path(cancel).exists():raise StopAutomation('cancel_requested')
-    chosen=candidates[0] if len(candidates)==1 else discover_main(exe,candidates,cancel)
+    chosen=candidates[0] if len(candidates)==1 else discover_main(exe,candidates,cancel,allow_pending=allow_pending)
     if not any((w.hwnd,w.pid)==(chosen.hwnd,chosen.pid) for w in candidates):
         raise StopAutomation('process_identity_changed')
     MAIN_DIAGNOSTICS['selected']=True
@@ -31,7 +32,10 @@ def select_main_candidate(exe,candidates,cancel=None):
 def explain_error(code):
     from .compatibility import REASONS
     return {
-        'qq_chat_not_open':'QQ 尚未打开聊天输入区，未提交文件。请打开本人测试会话后继续。',
+        'qq_chat_not_open':'QQ 尚未打开聊天输入区，未提交文件。请打开带表情按钮的任意聊天窗口后继续。',
+        'qq_visual_chat_toolbar_not_unique':'未能唯一确认 QQ 聊天工具栏。请让带表情按钮的聊天窗口完整显示，移开遮挡后继续；未提交项已保留。',
+        'qq_visual_favorite_panel_ambiguous':'QQ 收藏面板无法唯一确认。请移开遮挡并让收藏面板完整显示后继续。',
+        'qq_visual_native_cell_unavailable':'视觉模式未取得可用的收藏位置，已保留结果，请重新打开收藏首屏后继续。',
         'heart_not_uniquely_identified':'未能确认 QQ 收藏入口；文件尚未提交。请打开“我的收藏”后继续。',
         'plus_not_uniquely_identified':'QQ 收藏导入按钮未唯一识别；请确保收藏首屏完整可见后继续，未提交项可安全重试。',
         'qq_uia_top_not_observed':'QQ 收藏导入入口未显示。请回到“我的收藏”顶部后继续。',
@@ -59,6 +63,7 @@ class FavoriteControls:
         self.worker = worker or UIAWorker(APP_ROOT / 'scripts/qq_favorites_uia.ps1')
         self.observations = 0
         self.actions = []
+        self._visual = None
 
     def close(self):
         self.worker.close()
@@ -67,6 +72,11 @@ class FavoriteControls:
         def check_cancel():
             if self.cancel and Path(self.cancel).exists():raise StopAutomation('cancel_requested')
         check_cancel()
+        if self._visual is not None:
+            result=self._visual.read(action,foreground,runtime_id)
+            self.observations+=1
+            if result.get('performed'):self.actions.append(action)
+            return result
         w = self.window
         result = self.worker.request(cancel_check=check_cancel,window=w.hwnd, pid=w.pid, exe=str(self.exe),
                                      rect=list(w.rect), dpi=w.dpi, action=action, foreground=foreground,
@@ -75,8 +85,35 @@ class FavoriteControls:
         self.observations += 1
         if not result.get('ok'):
             raise StopAutomation(result.get('reason', 'qq_uia_provider_error'))
+        if result.get('native_click_rect') is not None:
+            # MSAA proved the exact tab and returned no attempted action.
+            # Geometry-only grouping tabs use the existing guarded input path.
+            if action!='select-favorites' or result.get('performed') or not result.get('panel_open'):
+                raise StopAutomation('qq_msaa_favorite_tab_changed')
+            box=result['native_click_rect'];panel=result['panel_rect']
+            if len(box)!=4 or not (panel[0]<=box[0]<box[2]<=panel[2] and panel[1]<=box[1]<box[3]<=panel[3]):
+                raise StopAutomation('favorite_panel_geometry_changed')
+            from .windows import click
+            check_cancel()
+            click(w,self.exe,round((box[0]+box[2])/2-w.rect[0]),round((box[1]+box[3])/2-w.rect[1]))
+            self.actions.append(action)
+            time.sleep(.12)
+            return self.read()
         if result.get('performed'):
             self.actions.append(action)
+        # Both providers must lack the requested capability. A successfully
+        # opened panel can need a visual tab; this never replays an action or
+        # bypasses a failed/unknown action response.
+        partial_tab=(result.get('visual_fallback_scope')=='favorite-tab' and result.get('panel_open')
+                     and not result.get('favorite_tab_ready') and not result.get('favorites_open'))
+        if (result.get('visual_fallback_eligible') is True and (not self.actions or partial_tab)
+                and action in ('snapshot','panel','describe')
+                and user.GetForegroundWindow()==w.hwnd):
+            from .qq_visual import VisualControls
+            visual=VisualControls(w,self.exe,self.cancel)
+            observed=visual.read(action,foreground,runtime_id)
+            self._visual=visual
+            return observed
         return result
 
     def wait(self, predicate, reason, initial=None, timeout=4):
@@ -129,6 +166,14 @@ class FavoriteControls:
         """Restore the actual import tile, not just the first sticker below it."""
         from .windows import scroll
         state=state or self.read();deadline=time.monotonic()+self._settle_budget(state,timeout);steps=0;revealed=False
+        if state.get('backend')=='visual':
+            while not state.get('at_top'):
+                if not state.get('favorites_open'):raise StopAutomation('qq_uia_personal_favorites_not_open')
+                if time.monotonic()>=deadline or steps>=12:raise StopAutomation('qq_uia_top_not_observed')
+                box=state['grid_rect'];x,y=self.window.rect[:2]
+                scroll(self.window,self.exe,round((box[0]+box[2])/2-x),round((box[1]+box[3])/2-y),3)
+                steps+=1;time.sleep(.12);state=self.read()
+            return state
         while not state.get('at_top'):
             if not state.get('favorites_open'):raise StopAutomation('qq_uia_personal_favorites_not_open')
             if time.monotonic()>=deadline:raise StopAutomation('qq_uia_top_not_observed')
@@ -230,7 +275,7 @@ def restore_hidden_candidates(exe,candidates,cancel,worker):
                 user.ShowWindowAsync(window.hwnd,0)
 
 
-def discover_main(exe, windows, cancel=None,restore_hidden=False):
+def discover_main(exe, windows, cancel=None,restore_hidden=False,allow_pending=False):
     """Read semantic toolbar before restoring a hidden window; never guess size."""
     if cancel and Path(cancel).exists():raise StopAutomation('cancel_requested')
     # A minimized Chromium window has a tiny offscreen current rectangle.
@@ -261,12 +306,26 @@ def discover_main(exe, windows, cancel=None,restore_hidden=False):
         deadline = time.monotonic() + 4
         restored=False;activated=False
         while True:
-            found = []
+            found = [];empty_visible=[]
             for window in candidates:
                 session = FavoriteControls(window, exe, cancel, worker)
-                if session.read('describe', foreground=False)['toolbar_ready']:
-                    found.append(window)
+                try:
+                    observation=session.read('describe', foreground=False)
+                    if observation['toolbar_ready']:
+                        found.append(window)
+                    elif observation.get('visual_fallback_eligible') is True and user.IsWindowVisible(window.hwnd) and not user.IsIconic(window.hwnd):
+                        empty_visible.append(window)
+                except StopAutomation as exc:
+                    # A foreground photo viewer may contain a screenshot of
+                    # a chat. Its failed visual chat proof is not a failure
+                    # of the other independently checked QQ windows.
+                    if str(exc)!='qq_visual_chat_toolbar_not_unique':raise
             if len(found) > 1:
+                front=user.GetForegroundWindow()
+                current=[w for w in found if w.hwnd==front]
+                visible=[w for w in found if user.IsWindowVisible(w.hwnd) and not user.IsIconic(w.hwnd)]
+                if len({w.pid for w in found})==1 and (visible or restore_hidden or allow_pending):
+                    return current[0] if current and current[0] in visible else (visible or found)[0]
                 raise StopAutomation('client_main_window_missing_or_ambiguous')
             if found:
                 return found[0]
@@ -278,7 +337,13 @@ def discover_main(exe, windows, cancel=None,restore_hidden=False):
                 if session.read('describe',foreground=False)['toolbar_ready']:found.append(window)
             if len(found)>1:raise StopAutomation('client_main_window_missing_or_ambiguous')
             if found:return found[0]
-            if restore_hidden and not restored:
+            if allow_pending and empty_visible and len({w.pid for w in candidates})==1:
+                # Read-only preflight may defer identity to bind_window. It
+                # must not reject the whole job before foreground pixel proof
+                # can run. This candidate alone never authorizes client input.
+                MAIN_DIAGNOSTICS['pending_visual_confirmation']=True
+                return empty_visible[0]
+            if restore_hidden and not restored and not empty_visible:
                 restored=True
                 found=restore_hidden_candidates(exe,candidates+hidden_candidates,cancel,worker)
                 if found:return found[0]
@@ -288,6 +353,21 @@ def discover_main(exe, windows, cancel=None,restore_hidden=False):
             if restore_hidden and not activated:
                 activated=True
                 visible_candidates=[w for w in candidates if user.IsWindowVisible(w.hwnd) and not user.IsIconic(w.hwnd)]
+                if empty_visible and len({w.pid for w in candidates})==1:
+                    from .windows import activate
+                    expected=user.GetForegroundWindow()
+                    for candidate in empty_visible[:3]:
+                        if user.GetForegroundWindow()!=expected:raise StopAutomation('foreground_changed')
+                        def check_cancel():
+                            if cancel and Path(cancel).exists():raise StopAutomation('cancel_requested')
+                        activate(candidate,exe,cancel_check=check_cancel,accessible_fallback=True)
+                        expected=candidate.hwnd
+                        try:
+                            observed=FavoriteControls(candidate,exe,cancel,worker).read('describe')
+                            if observed['toolbar_ready']:return candidate
+                        except StopAutomation as exc:
+                            if str(exc)!='qq_visual_chat_toolbar_not_unique':raise
+                    raise StopAutomation('qq_chat_not_open')
                 if len(visible_candidates)==1:
                     from .windows import activate
                     def check_cancel():

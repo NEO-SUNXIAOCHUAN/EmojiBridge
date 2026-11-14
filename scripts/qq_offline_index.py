@@ -10,6 +10,7 @@ from emoji_bridge.media import references
 from emoji_bridge.originals import attach_receipt
 from emoji_bridge.snapshot_originals import register
 from emoji_bridge.state import save_json,sha
+from emoji_bridge.paging import full_cell
 from emoji_bridge.snapshot_matching import CellMatcher,NATIVE_PROFILE
 
 VERSION=6
@@ -65,9 +66,9 @@ def animation_leads(inventory,cells,cancel=None):
                 for n in range(1,count):
                     acquire.cancelled(cancel);im.seek(n);frame=ImageOps.exif_transpose(im).convert('RGBA')
                     frame.thumbnail((96,96),Image.Resampling.LANCZOS);yield n,frame
-            matcher=CellMatcher(frames(),prefilter=len(cells)>=8)
+            matchers={edge:CellMatcher(frames(),edge=edge,prefilter=len(cells)>=8) for edge in {min(c.size) for c in cells.values()}}
             for ident,cell in cells.items():
-                hits=matcher.match(cell)
+                hits=matchers[min(cell.size)].match(cell)
                 if hits:
                     n=min(hits,key=lambda n:hits[n]['error'])
                     results[ident][entry['name']]=dict(hits[n],frame=n)
@@ -93,9 +94,9 @@ def native_leads(inventory,cells,cancel=None):
         acquire.cancelled(cancel)
         path=acquire.cache.candidate_path(inventory['root'],entry['name']);before=path.stat()
         if (before.st_size,before.st_mtime_ns)!=(entry['size'],entry['mtime_ns']):raise ValueError('cache_candidate_changed')
-        matcher=CellMatcher(native_frames(path,cancel),native=True,prefilter=len(cells)>=8)
+        matchers={edge:CellMatcher(native_frames(path,cancel),edge=edge,native=True,prefilter=len(cells)>=8) for edge in {min(c.size) for c in cells.values()}}
         for ident,cell in cells.items():
-            hits=matcher.match(cell)
+            hits=matchers[min(cell.size)].match(cell)
             if hits:
                 n=min(hits,key=lambda n:hits[n]['error'])
                 results[ident][entry['name']]=dict(hits[n],frame=n)
@@ -140,16 +141,16 @@ def build(library_path=None,cancel=None,progress=None,stage=None,after_basic=Non
             reusable.add(item['id']);continue
         try:
             scan,_=acquire.context(item)
-            if item['rect'][3]>279:continue
             image_path=scan['pages'][item['page']]['image']
             if image_path not in pages:
                 with Image.open(image_path) as im:pages[image_path]=im.convert('RGB')
+            if not full_cell(pages[image_path],item['rect']):continue
             cells[item['id']]=pages[image_path].crop(item['rect'])
         except (OSError,ValueError,KeyError):continue
-    matcher=CellMatcher(frames(),prefilter=len(cells)>=8) if cells else None
+    matchers={edge:CellMatcher(frames(),edge=edge,prefilter=len(cells)>=8) for edge in {min(c.size) for c in cells.values()}}
     if stage and cells:stage(f'正在补查 {len(cells)} 项收藏与本地动图画面；已准备项目可先浏览。')
     later=animation_leads(inventory,cells,cancel)
-    candidates={ident:matcher.match(cell) for ident,cell in cells.items()}
+    candidates={ident:matchers[min(cell.size)].match(cell) for ident,cell in cells.items()}
     for ident,hits in candidates.items():
         for name,hit in later.get(ident,{}).items():
             if name not in hits or hit['error']<hits[name]['error']:hits[name]=hit
@@ -192,12 +193,12 @@ def build(library_path=None,cancel=None,progress=None,stage=None,after_basic=Non
         result={'id':item['id'],'status':'pending_confirmation'}
         try:
             scan,selected=acquire.context(item)
-            if item['rect'][3]>279:raise ValueError('saved_cell_clipped_refresh_index_required')
             if duplicate_entries:raise ValueError('selected_favorite_has_multiple_cache_candidates')
             if inventory.get('failures'):raise ValueError('cache_candidates_incomplete')
             image_path=scan['pages'][item['page']]['image']
             if image_path not in pages:
                 with Image.open(image_path) as im:pages[image_path]=im.convert('RGB')
+            if not full_cell(pages[image_path],item['rect']):raise ValueError('saved_cell_clipped_refresh_index_required')
             cell=pages[image_path].crop(item['rect']);leads=candidates.get(item['id'],{})
             if len(leads)!=1:
                 candidate_path=folder/f'candidates-{n}.json'
@@ -214,8 +215,8 @@ def build(library_path=None,cancel=None,progress=None,stage=None,after_basic=Non
             copy=acquire.cache.copied_original(inventory['root'],entry,target/'original')
             asset,meta=acquire.prepare_asset(Path(copy['file']),'qq',acquire.ROOT/'private/T006/assets',native=True)
             native=leads[name].get('profile')==NATIVE_PROFILE
-            hits=(CellMatcher(native_frames(meta['original_copy'],cancel),native=True).match(cell) if native
-                  else CellMatcher(enumerate(references(meta))).match(cell))
+            hits=(CellMatcher(native_frames(meta['original_copy'],cancel),edge=min(cell.size),native=True).match(cell) if native
+                  else CellMatcher(enumerate(references(meta)),edge=min(cell.size)).match(cell))
             if not hits:raise ValueError('saved_original_match_not_strong_enough')
             matched=min(hits.values(),key=lambda hit:hit['error'])
             selection={'source_kind':'personal_favorites_ui','item_id':item['id'],'selected':selected,

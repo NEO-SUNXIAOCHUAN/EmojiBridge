@@ -51,6 +51,12 @@ class FinishedOutput(ttk.Frame):
 
     def ready(self):return self.ready_key is not None and self.ready_key==self.key() and self.ready_size==self.output_size() and self.path and self.path.exists()
 
+    def output_format(self):
+        from emoji_bridge.work_output import preferred_format
+        return preferred_format(self.editor.doc).upper() if self.editor.doc else 'PNG'
+
+    def is_preparing(self):return self.future is not None or self.operation_future is not None
+
     def show_ready(self):
         if self.card.preview is None and self.photo:self.card.preview=self.photo
         self.card.configure(image=self.photo,text=f'拖出{self.path.suffix[1:].upper()}\n{self.size[0]}×{self.size[1]} · 就绪')

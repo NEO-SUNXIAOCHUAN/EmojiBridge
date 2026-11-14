@@ -2,7 +2,8 @@
 from datetime import datetime
 from pathlib import Path
 import hashlib,json,time
-from contextlib import nullcontext
+from contextlib import nullcontext,contextmanager
+from contextvars import ContextVar
 from threading import Lock
 import numpy as np
 from PIL import Image
@@ -18,6 +19,18 @@ import qq_cache_acquire as acquire
 
 
 from emoji_bridge.timing import measured,stage
+
+_session=ContextVar('qq_preparation_candidates',default=None)
+
+@contextmanager
+def preparation_session():
+    """Reuse decoding within one account writer; never across worker runs."""
+    if _session.get() is not None:
+        yield
+        return
+    token=_session.set({})
+    try:yield
+    finally:_session.reset(token)
 
 
 class Candidates:
@@ -75,6 +88,16 @@ def prepare(library_path=None,cancel=None,progress=None,ids=None,*,candidates=No
     pending=[i for i in library['clients']['qq']['items'] if (ids is None or i['id'] in ids)
              and (not i.get('original_available') or needs_refinement(i)) and not i.get('source_receipt_only')]
     if not pending:return dict(results=[],native_ui_calls=0,messages_sent=0)
+    session=_session.get()
+    if candidates is None and session is not None:
+        candidates=session.get('candidates')
+        if candidates is not None:
+            try:candidates.check(cancel)
+            except ValueError as exc:
+                if str(exc)!='cache_inventory_changed':raise
+                candidates=None
+        if candidates is None:
+            candidates=Candidates(cancel);session['candidates']=candidates
     if candidates is not None:candidates.check(cancel)
     inventory,inv_path=((candidates.inventory,candidates.path) if candidates is not None else acquire.current_inventory(cancel))
     acquire.cancelled(cancel)

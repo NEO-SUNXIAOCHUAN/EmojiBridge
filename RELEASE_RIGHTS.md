@@ -14,7 +14,7 @@
 | 四张经典 Meme | 仅独立宣传素材包，不在软件或源码包 | 独立素材包的来源/许可单独核对 |
 | meme-generator / contrib | 完整包或单独模板扩展 | 引擎 MIT；不等于模板插画/字体全部获得再分发授权，逐素材授权仍待核 |
 | 像素音效、末影人及品牌相关美术 | 现有动效资源 | 用户提供与来源记录保留；第三方声音/游戏美术公开再分发授权尚待核 |
-| FFmpeg | 不随候选包分发，用户按需取得固定 Gyan 构建 | GPLv3 构建及来源见 third_party/FFmpeg-NOTICE.md；本次不代发其二进制 |
+| FFmpeg | S0167 独立离线测试候选包含固定 Gyan 构建 | GPLv3 构建及来源见 third_party/FFmpeg-NOTICE.md；公开分发前完整对应源码及外部库义务仍待核，不将上游链接当作完成 |
 | 抠图模型 | 不随软件包分发，按需取得或校验导入 | 权重与代码许可分开，详见 third_party/cutout/NOTICE.md |
 | OCR / CSRT | 随视觉运行时分发 | 锁定依赖、三个 OCR 模型及原许可，见 third_party/factory/vision-runtime-lock.json |
 | 已移除照片视差/人物宠物 | 不提供产品入口，不捆绑运行时/权重 | 保留历史许可文本不等于重新启用；指定14模板排除表保留 |

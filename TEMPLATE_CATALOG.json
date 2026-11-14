@@ -299,7 +299,7 @@
     "min_texts": 1,
     "max_texts": 1,
     "default_texts": [
-      "小桥"
+      "名字"
     ],
     "parameters": {
       "$defs": {
@@ -456,7 +456,7 @@
     "min_texts": 1,
     "max_texts": 6,
     "default_texts": [
-      "小桥"
+      "名字"
     ],
     "parameters": {},
     "animation_policy": "explicit-frame",
@@ -669,7 +669,7 @@
     "min_texts": 1,
     "max_texts": 1,
     "default_texts": [
-      "小桥"
+      "名字"
     ],
     "parameters": {},
     "animation_policy": "explicit-frame",
@@ -2198,10 +2198,11 @@
     "tags": [],
     "min_images": 1,
     "max_images": 1,
-    "min_texts": 1,
+    "min_texts": 2,
     "max_texts": 2,
     "default_texts": [
-      "救命啊"
+      "救命啊",
+      "第二行文字"
     ],
     "parameters": {},
     "animation_policy": "explicit-frame",
@@ -3988,7 +3989,7 @@
     "min_texts": 1,
     "max_texts": 1,
     "default_texts": [
-      "小桥"
+      "名字"
     ],
     "parameters": {},
     "animation_policy": "explicit-frame",
@@ -6373,7 +6374,7 @@
     "min_texts": 1,
     "max_texts": 1,
     "default_texts": [
-      "小桥"
+      "名字"
     ],
     "parameters": {},
     "animation_policy": "explicit-frame",
@@ -10942,7 +10943,7 @@
     "min_texts": 1,
     "max_texts": 1,
     "default_texts": [
-      "小桥"
+      "名字"
     ],
     "parameters": {
       "$defs": {
@@ -11122,7 +11123,7 @@
     "min_texts": 1,
     "max_texts": 1,
     "default_texts": [
-      "小桥"
+      "名字"
     ],
     "parameters": {},
     "animation_policy": "explicit-frame",

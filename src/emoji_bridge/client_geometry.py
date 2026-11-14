@@ -19,9 +19,16 @@ def qq_panel_box(window, state):
     # Chromium can round each edge independently by a physical pixel.
     size = (panel[2]-panel[0], panel[3]-panel[1])
     inset = tuple(grid[i]-panel[i % 2] for i in range(4))
-    if any(abs(a-b*scale)>2 for a,b in zip(size,(450,337))):
+    visual=state.get('backend')=='visual' and state.get('visual_grid_proven')
+    if visual:
+        if abs(size[0]-450*scale)>2 or not 325*scale<=size[1]<=340*scale:
+            raise StopAutomation('favorite_panel_geometry_changed')
+        if (any(abs(inset[i]-v*scale)>2 for i,v in enumerate((1,1,449)))
+                or abs((size[1]-inset[3])-50*scale)>4):
+            raise StopAutomation('favorite_grid_geometry_changed')
+    elif abs(size[0]-450*scale)>2 or abs(size[1]-337*scale)>4:
         raise StopAutomation('favorite_panel_geometry_changed')
-    if any(abs(a-b*scale)>2 for a,b in zip(inset,(1,1,449,287))):
+    if not visual and any(abs(a-b*scale)>(4 if i==3 else 2) for i,(a,b) in enumerate(zip(inset,(1,1,449,287)))):
         raise StopAutomation('favorite_grid_geometry_changed')
     if not (0<=local[0]<local[2]<=window.rect[2]-window.rect[0]
             and 0<=local[1]<local[3]<=window.rect[3]-window.rect[1]):

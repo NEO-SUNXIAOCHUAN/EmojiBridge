@@ -16,6 +16,25 @@ from emoji_bridge.paging import align_scroll,native_observed_cells
 MAX_SCAN_VIEWS=64
 
 
+def settle_blank_cells(q,box,image,offset,native,cancel=None):
+    """Wait only for blank native cells, retaining the same observed geometry."""
+    cells=native_observed_cells(image,offset,native)
+    if not any(c['content_fraction']<.06 for c in cells):return image,native,cells
+    geometry=[(c['position'],c['rect']) for c in cells]
+    for _ in range(4):
+        if cancel and Path(cancel).exists():raise StopAutomation('cancel_requested')
+        time.sleep(.15)
+        q.assert_panel(box)
+        fresh=q.controls.read()
+        candidate=q.frame().crop(qq_grid_rect(box))
+        observed=native_observed_cells(candidate,offset,fresh)
+        if [(c['position'],c['rect']) for c in observed]!=geometry:
+            raise StopAutomation('qq_favorite_loading_geometry_changed')
+        image,native,cells=candidate,fresh,observed
+        if not any(c['content_fraction']<.06 for c in cells):break
+    return image,native,cells
+
+
 def visible_window():
     """Observe only an already foreground QQ; no restore/activation/input."""
     from emoji_bridge.windows import user,qq_windows
@@ -105,8 +124,10 @@ def scan(max_views=5,cancel=None,progress=None):
                         image.save(img)
                     offset+=alignment['pixels']
                 with stage('qq_scan_controls'):native=q.controls.read()
-                cells=native_observed_cells(image,offset,native)
+                image,native,cells=settle_blank_cells(q,box,image,offset,native,cancel)
+                image.save(img)
                 page={'view':number,'offset':offset,'image':str(img),'sha256':sha(img),'alignment':alignment,'cells':cells}
+                page['unloaded_positions']=[c['position'] for c in cells if c['content_fraction']<.06]
                 r['pages'].append(page)
                 page['native_view'] = native
                 for cell in cells:

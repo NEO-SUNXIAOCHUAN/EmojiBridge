@@ -1,5 +1,11 @@
 # S0100 FFmpeg 来源与许可
 
+## S0167 离线测试包补充
+
+S0167 将下述固定 9.0.2 构建的 ffmpeg.exe、ffprobe.exe、原 LICENSE 与 README.txt 放入 runtime/ffmpeg。明确设置目录优先，其次随包工具，再考虑系统/旧缓存；不安装系统组件、不修改全局 PATH。下载 ZIP 的 SHA256 已核对，构建来源记录见同目录 build.json，逐文件摘要见 runtime/offline-defaults.json。此前“不随包”描述仅适用于旧轮次。
+
+本包是独立测试候选，不公开更新。公开分发前仍需落实完整对应源码、构建脚本及所含外部库的许可义务；本记录和上游源码链接不是已经完成全部分发义务的声明。
+
 - 工程没有引入 FFmpeg 源码或 Python 视频库；仅通过独立本地进程调用 `ffmpeg` / `ffprobe`。
 - 先复用 `EMOJI_BRIDGE_FFMPEG_BIN` 指定目录或 PATH 中的完整工具对。没有可用工具时，按需取得唯一固定 Windows 构建：Gyan FFmpeg **9.0.2 essentials**。
 - 来源页：[Gyan Windows builds](https://www.gyan.dev/ffmpeg/builds/)；FFmpeg 官方下载页列出的 Windows 构建提供者。[官方构建发布](https://github.com/GyanD/codexffmpeg/releases/tag/9.0.2)。

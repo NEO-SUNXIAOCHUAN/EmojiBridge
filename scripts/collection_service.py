@@ -293,7 +293,7 @@ class Collections:
         if not job or job.get('user_cancelled'):return
         if job.get('manual') and job['action']!='refresh':return
         job['yielded_to_transfer']=True
-        job['resume_after_transfer']=bool(job.get('manual') and job['action']=='refresh')
+        job['resume_after_transfer']=bool(job['action']=='enrich' or job.get('manual') and job['action']=='refresh')
         Path(job['cancel']).touch()
 
     def resume_read(self,job,state):
@@ -327,6 +327,8 @@ class Collections:
                 if state.get('visible_signature'):self.visible_signature=state['visible_signature']
                 self.finish_refresh(job,state)
                 self.resume_read(job,state)
+            elif job['generation']==self.generation and job['action']=='enrich':
+                self.resume_read(job,self.states.get(job['client'],{}))
             if job['generation']==self.generation and job['action']=='enrich' and not Path(job['cancel']).exists():
                 remaining=self.states.get(job['client'],{}).get('remaining_ids',[])
                 if remaining:

@@ -1,5 +1,5 @@
 {
-  "source_commit": "ad405143e18539c24beeff584d13006895d70d0d",
+  "source_commit": "309f2c1d68254d40005b87484f069a1892ef5f01",
   "history_included": false,
   "publication_ready": false,
   "rights_review": "RELEASE_RIGHTS.md",
@@ -276,8 +276,8 @@
     },
     {
       "path": "assets/factory/catalog.json",
-      "sha256": "ac3fd0b587552682f10576d42231cd4f66ab15ed3c1f2802744dac1f96936a88",
-      "bytes": 292872
+      "sha256": "93c86748cee89a13ab2390842237bfeb755ed16a629e3e6bd36373ad5145b74b",
+      "bytes": 292898
     },
     {
       "path": "assets/factory/default-input.png",
@@ -4550,6 +4550,46 @@
       "bytes": 635
     },
     {
+      "path": "assets/qq/visual-anchors/folder.png",
+      "sha256": "ba8211073e7e60735ae3269f1393301c12d3c451fe9a374fe22e4c336abaa4b6",
+      "bytes": 557
+    },
+    {
+      "path": "assets/qq/visual-anchors/gif-tab.png",
+      "sha256": "7f9b01235284540560bd6aff792acc7b7ff9517d59ec7dbaf219910eb40dec01",
+      "bytes": 1056
+    },
+    {
+      "path": "assets/qq/visual-anchors/heart.png",
+      "sha256": "87fc38aef19bbd007caecbaed620da9f758a38265f230093bdc779e9bad5d537",
+      "bytes": 1148
+    },
+    {
+      "path": "assets/qq/visual-anchors/manifest.json",
+      "sha256": "ff995a41455bbee8abe754952e8f84243913f23fbccb16692ffb00de8542a2e0",
+      "bytes": 725
+    },
+    {
+      "path": "assets/qq/visual-anchors/plus-phase.png",
+      "sha256": "d981ca36e6b4760b825f35e4b9fb010f79ed19f512c2b59d64cfe839f0e3c1f6",
+      "bytes": 2151
+    },
+    {
+      "path": "assets/qq/visual-anchors/plus.png",
+      "sha256": "ec9d191d20b6ff25edba4a862e199b15971fd62e09339fef32939e309e79e5a1",
+      "bytes": 2404
+    },
+    {
+      "path": "assets/qq/visual-anchors/scissors.png",
+      "sha256": "508c072f12132c59cb659d8a7b1bb0e356990dd7a09ea17e92a639d8e29fccca",
+      "bytes": 856
+    },
+    {
+      "path": "assets/qq/visual-anchors/search-tab.png",
+      "sha256": "130757d0db19685be245e773b82d3a9f4f3fd215c9ae72573867680b7889820e",
+      "bytes": 1040
+    },
+    {
       "path": "assets/startup-v10/EmojiBridge-A.png",
       "sha256": "105817e84e13e853db51cab0291cf5bdcb831e700d7c48480b4c9f3a333dccee",
       "bytes": 133189
@@ -4573,6 +4613,11 @@
       "path": "assets/ui-midnight.json",
       "sha256": "d7ac644108f9921974db719f4f38b2364adf6fad3c990281b25a15a40f64491b",
       "bytes": 574
+    },
+    {
+      "path": "BUILDING.md",
+      "sha256": "12d14b24097e4a667d355de92bdc1a9104d7adc2cac1f331c2ed1984d9dfb63b",
+      "bytes": 3107
     },
     {
       "path": "COPYRIGHT.md",
@@ -4856,8 +4901,8 @@
     },
     {
       "path": "FEATURES.md",
-      "sha256": "738e33fb7cbf8e06dbd88760f3e52ab48dc6b13854b8881596d8bd975789f8a7",
-      "bytes": 1361
+      "sha256": "7906b13527dcdc3aeb5f002f5029f1b2cfd20f6c224f0c2b2469d4e4c2d7c99d",
+      "bytes": 1698
     },
     {
       "path": "LICENSE",
@@ -4866,18 +4911,18 @@
     },
     {
       "path": "README.md",
-      "sha256": "95f504aeaf9205c7854958c36e010f8cdfcc2d4e9936d4442db1facb1a9b2efb",
-      "bytes": 3196
+      "sha256": "ce30ceb8792929be09eb166ce1e99b337b9224c7ea3c40ba38cd68b42b26645b",
+      "bytes": 3472
     },
     {
       "path": "RELEASE_NOTES.md",
-      "sha256": "af31f3f396a1cac9081a0ae8f6e033190087d26101426f3faff1860cfe87c4dc",
-      "bytes": 1839
+      "sha256": "89da53fad12fd787f72804e148a82559593142a4ae53ab2b45fff21bd330d2bb",
+      "bytes": 9095
     },
     {
       "path": "RELEASE_RIGHTS.md",
-      "sha256": "8995392c79580662867e14c87d75e271fb917039251832fed6d4c639a8834d73",
-      "bytes": 2527
+      "sha256": "f5ce2fdd4bc9af8ce5bc765c139a9f8897d3feb8e440cd2d37604a9fd4a2bf41",
+      "bytes": 2587
     },
     {
       "path": "requirements-cutout.txt",
@@ -4926,28 +4971,28 @@
     },
     {
       "path": "scripts/client_material_import.py",
-      "sha256": "e3efc7cbf347127bea6b83868f6c30914367721a492cc8908040f911714d10fc",
-      "bytes": 11019
+      "sha256": "d355cc8f5d6694b696feb12aa9d9926068497a9cacf69c94be27774174718eae",
+      "bytes": 11072
     },
     {
       "path": "scripts/client_preflight.py",
-      "sha256": "cfc2cefa52351a4b1b44a5973687414d021c3a2618dbd483c211fc1f305f5f3a",
-      "bytes": 3522
+      "sha256": "46c97d7ea23e8b8b077c1438d3a2048f9b5058c3e11d25b447fcad465c6332df",
+      "bytes": 3541
     },
     {
       "path": "scripts/collection_enrich.py",
-      "sha256": "e9b679574811b1343e209616425b939b9ecdecbd8738b9a0d5448617b940e92f",
-      "bytes": 5685
+      "sha256": "e011375c11cdd0790a2dd6cddd6dfdce954b04e0a124cc02e1f82fd6b25cec9e",
+      "bytes": 5713
     },
     {
       "path": "scripts/collection_service.py",
-      "sha256": "d355eb2db363c9a9fbe7fbafa321735eb96a59eec27c8f97799996189c13c798",
-      "bytes": 24798
+      "sha256": "ab48a36a9bb90b5a3639a920bc1a4df1b10560b4e89ed0098b3c587827ff350d",
+      "bytes": 24980
     },
     {
       "path": "scripts/collection_transfer.py",
-      "sha256": "dde463ebd8e70865ba53a601fab08adb0dfedb35bfda8165f3cd4a380272ad15",
-      "bytes": 8744
+      "sha256": "071e63973af6f472c67b1c6d6a41fbb264627ae770ff3c713ad4e4fc0c9ea31c",
+      "bytes": 10504
     },
     {
       "path": "scripts/collection_worker.py",
@@ -4976,18 +5021,23 @@
     },
     {
       "path": "scripts/desktop_runtime.py",
-      "sha256": "c2e0f532c6d8c05b0a4b8a9874aa8e3a9270233ac52e027adc73332f1513558d",
-      "bytes": 595
+      "sha256": "33e76731acdc961796012e48a92b1a960055d36838dad95422a38e7182ca7ab8",
+      "bytes": 818
     },
     {
       "path": "scripts/desktop_service.py",
-      "sha256": "96d494d1190cd589f008ba8eb4b1f62b52d665b6cc3313957b9bc0d7f263d0cc",
-      "bytes": 63704
+      "sha256": "41a989a5f7c50e8c4e6f8c0a03148c95429270276b8c3fcb9f55cb027ad7b70d",
+      "bytes": 63923
     },
     {
       "path": "scripts/desktop_shell.py",
       "sha256": "a7f61e3dc2e3e2da4cce665403cd41439ceff3f6aac6071c5799101a564f5dd8",
       "bytes": 43423
+    },
+    {
+      "path": "scripts/desktop_startup.py",
+      "sha256": "090149f1e34cf415c1285c77bd56b7941c03649e94840df321e9247d8fdb57c5",
+      "bytes": 4478
     },
     {
       "path": "scripts/desktop_tray.py",
@@ -5026,8 +5076,8 @@
     },
     {
       "path": "scripts/editor_drag_card.py",
-      "sha256": "19e120445f3caa3098f852c30fb165d9ef258def241dd703a178367af26e5e10",
-      "bytes": 6120
+      "sha256": "3e7b35cad6dcec62c542887ef6c25abb34ebc05d474e377aad7a0b10d7aa6ca2",
+      "bytes": 5931
     },
     {
       "path": "scripts/editor_icons.py",
@@ -5041,8 +5091,8 @@
     },
     {
       "path": "scripts/editor_output.py",
-      "sha256": "942d404247f554dd010ecf583931c8ec3f49fdf1c6b1ae2f4cfdf97d398fc8eb",
-      "bytes": 23894
+      "sha256": "59a1a6561caba9291038a302487465e6733e7dd87d0c66c076d9c3324efb6ec7",
+      "bytes": 24175
     },
     {
       "path": "scripts/editor_panels.py",
@@ -5066,8 +5116,8 @@
     },
     {
       "path": "scripts/export_public_source.py",
-      "sha256": "e55bc015f0043ceacd6e812b566da69365131410b08939b215b1475515b119e7",
-      "bytes": 4223
+      "sha256": "8990eeae93c18207840cb6b5fa6c2f8f9fa0911bb54c7b3882403adf606ad989",
+      "bytes": 4274
     },
     {
       "path": "scripts/factory_animation_input.py",
@@ -5081,13 +5131,13 @@
     },
     {
       "path": "scripts/factory_meme_worker.py",
-      "sha256": "d0a5cc5ec223454f9c2ed68934f84e881584ffff4ee25ff68551c40fcb651e19",
-      "bytes": 5215
+      "sha256": "b5391b69cceb8f95e37816c7338a7d39e5c69f3f80fcc43c0bf1d17866c6c3d3",
+      "bytes": 5554
     },
     {
       "path": "scripts/factory_preview_worker.py",
-      "sha256": "7650f7cf8dc085e4360317de42cbff9ebb5fd52842aff284377265e959b2dea1",
-      "bytes": 3205
+      "sha256": "4039c26f317b0b34709d9aadf8f19a009f1e5d0e590eff990babdee81de3950e",
+      "bytes": 3363
     },
     {
       "path": "scripts/factory_service.py",
@@ -5096,8 +5146,13 @@
     },
     {
       "path": "scripts/factory_speech_worker.py",
-      "sha256": "c7a69f740b43cb491e41c197d3207e08f4b99874832b3ee321f8635e2b9ff624",
-      "bytes": 1201
+      "sha256": "1bb6643b9a723e87a03125748cad56526f2f5a97763e7281fb8ff172e2aa7c62",
+      "bytes": 2108
+    },
+    {
+      "path": "scripts/factory_template_input.py",
+      "sha256": "29215897c45bcc9e7afa652e478f44ddfa0e0989492c6adae86afc67d173d415",
+      "bytes": 1058
     },
     {
       "path": "scripts/factory_vision_worker.py",
@@ -5113,6 +5168,11 @@
       "path": "scripts/gif_frame_picker.py",
       "sha256": "559545eb7158853674189d6bb85a1498cec53d3960c75e3c366329aaec444647",
       "bytes": 4030
+    },
+    {
+      "path": "scripts/install_wechat_visual_trial.ps1",
+      "sha256": "0a96d71a69a1824b35f73424a652e7e0444106c386c78d26676efc88ece17cd6",
+      "bytes": 4647
     },
     {
       "path": "scripts/layout_editor.py",
@@ -5175,6 +5235,36 @@
       "bytes": 10577
     },
     {
+      "path": "scripts/package_batch_compat_trial.py",
+      "sha256": "a3ea90b5ad92e597338ece2e433c29e5a5db0d38f94ee9c3371b0e6989f33f0c",
+      "bytes": 8594
+    },
+    {
+      "path": "scripts/package_download_ready.py",
+      "sha256": "068a5a9cf7d1b602c75089aef20c84999274eaac44461b5604ca331a85f48c9b",
+      "bytes": 9570
+    },
+    {
+      "path": "scripts/package_menu_original_trial.py",
+      "sha256": "67ae7e59fa1a0f66197b0d411d0fc691f3a4e7c1f60c8723a51ef29284e28f76",
+      "bytes": 11674
+    },
+    {
+      "path": "scripts/package_qq_visual_trial.py",
+      "sha256": "f637280d59a9aecd13ea16ea568cc3c4d91559771411f45345d56981cbdfd079",
+      "bytes": 7717
+    },
+    {
+      "path": "scripts/package_video_batch_trial.py",
+      "sha256": "9b3db93e7a7306790609d61dccf0e0e5550cf909c286497e727181dee2e4846c",
+      "bytes": 9290
+    },
+    {
+      "path": "scripts/package_wechat_visual_trial.py",
+      "sha256": "82b569798d668223832a72e01d3bc72564e519f1ff0b87983ca0a793782c389b",
+      "bytes": 8354
+    },
+    {
       "path": "scripts/pilot_launcher.py",
       "sha256": "4e2f9660a8eb14309eea1ebf6abc0114d2bfacce3fd8b3e20756fa3390e8df7a",
       "bytes": 4656
@@ -5216,13 +5306,13 @@
     },
     {
       "path": "scripts/qq_accessible.cs",
-      "sha256": "1cf00d13e355036ef2286800c2b83891f557551bd0735f9b3f6e84cd18ec691d",
-      "bytes": 10630
+      "sha256": "2081e3d76723cef21369c9e38d071ad608aed0dd22d0129e46d9a32285ae9e8b",
+      "bytes": 12751
     },
     {
       "path": "scripts/qq_appearance_prepare.py",
-      "sha256": "56244193301d718c7dde17911dc6a858fd14430172265fcd7ff086f91d38a3f3",
-      "bytes": 10676
+      "sha256": "6d3af22bf4467cd81d3c4539679b007bcbdd1d46071e8ea642d9cf982d40d7fb",
+      "bytes": 11509
     },
     {
       "path": "scripts/qq_batch_import.py",
@@ -5256,8 +5346,8 @@
     },
     {
       "path": "scripts/qq_catalog.py",
-      "sha256": "9d1490bf7c0d481f4c9516b722648337af3c3d8d9a2b394b55707e4d737fea34",
-      "bytes": 9326
+      "sha256": "9f1bf79bb53ad1cc0febf33b927fc56a155edff7853418358f48aeff5457c6ab",
+      "bytes": 10441
     },
     {
       "path": "scripts/qq_export.py",
@@ -5266,8 +5356,8 @@
     },
     {
       "path": "scripts/qq_favorites_uia.ps1",
-      "sha256": "9fcdd2fcbd99a95a240864090465a4eec153808b9dbeb4f0b543157f1b430582",
-      "bytes": 15070
+      "sha256": "bd598365a35733ee4f747bab74935b010b84c69ecfe07099df8dca2b6f8a05fa",
+      "bytes": 16696
     },
     {
       "path": "scripts/qq_favorites_uia_probe.ps1",
@@ -5276,13 +5366,13 @@
     },
     {
       "path": "scripts/qq_import.py",
-      "sha256": "19c78f4edae289cf32e15991e5fd7b58340a7b08a94a43569e14a89d73c41eba",
-      "bytes": 22369
+      "sha256": "7143fca3a084b9fc3d9ed6b02c1270c630eca485737d370a2fbd8a3276727433",
+      "bytes": 22492
     },
     {
       "path": "scripts/qq_offline_index.py",
-      "sha256": "13c29218b7494aa0f8165b21cfdb9d1dcb415e8a8b66631ec34986df8a6daaba",
-      "bytes": 15368
+      "sha256": "9db78d039d482762169ac0a3b8a9d8f43ce5565b58aa696776b07a8fe672aacd",
+      "bytes": 15739
     },
     {
       "path": "scripts/qq_pages.py",
@@ -5298,6 +5388,11 @@
       "path": "scripts/qq_resolve_variants.py",
       "sha256": "b4d60acca7e618805e023ae10bd5722428e63384fc6a3eb4c6bf0c6826870f2d",
       "bytes": 10233
+    },
+    {
+      "path": "scripts/qq_selected_prepare.py",
+      "sha256": "91c98262377c185c6b1f66390cb4fdda01f375dbe112044ceff92b710e6333c1",
+      "bytes": 4022
     },
     {
       "path": "scripts/qq_snapshot.py",
@@ -5321,8 +5416,8 @@
     },
     {
       "path": "scripts/qq_source_ui.py",
-      "sha256": "eb2b1c5cd1890ab231a6d55396264b51486ca139f1ef5a17f3278ed49afe390e",
-      "bytes": 3570
+      "sha256": "6e190f196e3128118201596c9f305146568f8ab7362d68911e085a5b11ea19cf",
+      "bytes": 4338
     },
     {
       "path": "scripts/qq_startup_pipeline.py",
@@ -5366,8 +5461,8 @@
     },
     {
       "path": "scripts/scribble_tools.py",
-      "sha256": "47e5b589e89bfa37f4676a76bee10f6ca1105f882ff4b4f431968b4209a01092",
-      "bytes": 22747
+      "sha256": "7fee0d6e6edfd74c04910ebe664c382a122f6e4dd071c0ccca2aa59736b071c7",
+      "bytes": 23649
     },
     {
       "path": "scripts/scribble_worker.py",
@@ -5456,8 +5551,8 @@
     },
     {
       "path": "scripts/video_speech_ui.py",
-      "sha256": "f1ec3fc4e48d9b03caa74ad1a693398ad3038daaef84dfbdc84d033553422716",
-      "bytes": 5586
+      "sha256": "3430c79f1136bc7469ec61819dc1e7c59d4f0ae5b8ef351b07f0f2b31533cde0",
+      "bytes": 6602
     },
     {
       "path": "scripts/video_timeline.py",
@@ -5466,8 +5561,8 @@
     },
     {
       "path": "scripts/video_tools.py",
-      "sha256": "2594556ffd47218765149d6b8fc95c03daf8963dbcac7d7a1bb370d1c1651619",
-      "bytes": 32268
+      "sha256": "23278fb42f9dc6f24516a7f36169d65c164fb58d9ddd8bce93b2f3624adc3aae",
+      "bytes": 35721
     },
     {
       "path": "scripts/vision_bundle.py",
@@ -5481,8 +5576,8 @@
     },
     {
       "path": "scripts/wechat_batch.py",
-      "sha256": "be514438f8ee00f8fdf791a80f9b078bc2cbb7f671891355d4c0b6a1837231e5",
-      "bytes": 41570
+      "sha256": "55fee400ee18a1e5fbc33fdf02162dd0576cc145d108db8ec59cb8fe4cd7407b",
+      "bytes": 43150
     },
     {
       "path": "scripts/wechat_batch_workflow.py",
@@ -5511,13 +5606,18 @@
     },
     {
       "path": "scripts/wechat_retry.py",
-      "sha256": "d16b5f82a3fa1474eb1421566cd0567fc2c88f38c3aef7f94b77f69d70be60c8",
-      "bytes": 5027
+      "sha256": "c1841db85d866124140671cce9b9c876bcb89a3e0d5d12824e5e72abac4f18b6",
+      "bytes": 5528
     },
     {
       "path": "scripts/wechat_uia.ps1",
-      "sha256": "6f50cef0c8dc7f9409b9f225f47ed27a54fce8c0ab16b43ce61da975050d56e7",
-      "bytes": 23153
+      "sha256": "99b6aab21276c610377596edbdc2c53a59579670a9adc30353357dd2a2b6526e",
+      "bytes": 23603
+    },
+    {
+      "path": "scripts/wechat_visual_ocr.ps1",
+      "sha256": "4d16c873151bf3638cbc76c85c9414d28b7f1e6859d4f07585c71a115ec8b178",
+      "bytes": 2650
     },
     {
       "path": "scripts/window_focus.ps1",
@@ -5566,13 +5666,13 @@
     },
     {
       "path": "src/emoji_bridge/appearance_originals.py",
-      "sha256": "91950b8113f496810db5d4dd82a5f6ac508b15fb47f11a2c11a4401ec5b95807",
-      "bytes": 7605
+      "sha256": "1ac6381e51f12ee88a42a58efac33f36340d51105f4121991fee3b34d25e37a4",
+      "bytes": 7676
     },
     {
       "path": "src/emoji_bridge/background_remove.py",
-      "sha256": "62b1f73f6f704f2f3ef7b47bbfbe9afdaea537083f7c314bf7ae6ad8ce4ba11c",
-      "bytes": 17506
+      "sha256": "5d4649a273ecb8c8d0af350676693fa57f9e3da3f3236c32204afde39242bf2c",
+      "bytes": 18984
     },
     {
       "path": "src/emoji_bridge/batch_transfer.py",
@@ -5586,8 +5686,8 @@
     },
     {
       "path": "src/emoji_bridge/capabilities.py",
-      "sha256": "9ef2972418cfab11bd24101c03b1c1d123ee183e76e8fe808721e257834a8ba1",
-      "bytes": 8201
+      "sha256": "a49efecf7d241d2e69939dd7cac59308b06e1061b5ce7536809b920f1eac50be",
+      "bytes": 8333
     },
     {
       "path": "src/emoji_bridge/card_names.py",
@@ -5601,8 +5701,8 @@
     },
     {
       "path": "src/emoji_bridge/client_geometry.py",
-      "sha256": "7109e029937453f98c58c8db0cd64dbfe132c15ba6ee001fc656d2e29f0a6f2c",
-      "bytes": 2923
+      "sha256": "ba9757e23af79205fab10fbf60ca4c7e16fc5dddab6f5815681cd01551b1c2be",
+      "bytes": 3403
     },
     {
       "path": "src/emoji_bridge/client_sources.py",
@@ -5631,8 +5731,8 @@
     },
     {
       "path": "src/emoji_bridge/compatibility.py",
-      "sha256": "ffeb130d8c1b5c5856449d11562e49565a8c6156db55b3eeb8fc2787255b4f82",
-      "bytes": 10756
+      "sha256": "28d38f2a44aa98aedab23ae016d44b0b70dfdc1c40bd76d28020cb85ef11a385",
+      "bytes": 12676
     },
     {
       "path": "src/emoji_bridge/compatibility_copy.py",
@@ -5741,8 +5841,8 @@
     },
     {
       "path": "src/emoji_bridge/media.py",
-      "sha256": "eed50965ed651b5294e009f131e4a3ea0d53e183202a2807a62f2d7fe2a12033",
-      "bytes": 8533
+      "sha256": "9fd6e4a13e12a7cf8232336944f19005fd4b15b0d0da82d9b9d46a1a1d56a4a7",
+      "bytes": 8604
     },
     {
       "path": "src/emoji_bridge/message_media.py",
@@ -5766,8 +5866,8 @@
     },
     {
       "path": "src/emoji_bridge/paging.py",
-      "sha256": "23070a63a402c71c19fc835e03d3a7b630056d495656ffda7f1d733914940485",
-      "bytes": 6221
+      "sha256": "b3e0fe99dbd55e4215f4cf06801789d0ad7a0392e71332a1ffbc0a10cdff34fa",
+      "bytes": 8217
     },
     {
       "path": "src/emoji_bridge/paths.py",
@@ -5811,13 +5911,18 @@
     },
     {
       "path": "src/emoji_bridge/qq_controls.py",
-      "sha256": "162ca21b406ca0c095d17f9eb20762803d53055f6d0afda136287d5e24aa55b2",
-      "bytes": 17098
+      "sha256": "20c94f9ecb001dba95751136eee4d31af1042d268c5a80b77117aef028d5b36b",
+      "bytes": 22843
     },
     {
       "path": "src/emoji_bridge/qq_thumbnails.py",
       "sha256": "2c5fdaa7246e6b0f87fb3abf91eddcd4f19b9c66d8c0b1348be940958c5898a0",
       "bytes": 4245
+    },
+    {
+      "path": "src/emoji_bridge/qq_visual.py",
+      "sha256": "4b1176da1f58117f8eac91e1f657a208dfa58dbad4d2ce220f682d50ba11f181",
+      "bytes": 10880
     },
     {
       "path": "src/emoji_bridge/qq_window.py",
@@ -5866,8 +5971,8 @@
     },
     {
       "path": "src/emoji_bridge/snapshot_originals.py",
-      "sha256": "d62f0bc0cf4f92c46859df87f887e22b74556d98ddd6a69464e204611872db0d",
-      "bytes": 4093
+      "sha256": "63ca74307243ab637d02768967108ffd261362f225e77b419292f8081851b2d2",
+      "bytes": 4347
     },
     {
       "path": "src/emoji_bridge/source_focus.py",
@@ -5876,8 +5981,8 @@
     },
     {
       "path": "src/emoji_bridge/state.py",
-      "sha256": "647c2df1cb937ebb1114b34724c19bfe285c9d88ecd78c727ccc9016bbeb6cbd",
-      "bytes": 7495
+      "sha256": "ea5bafc9e16f4cad7b6138c85572ae888ed08a86924ecaee0e4f50b80faefb53",
+      "bytes": 7784
     },
     {
       "path": "src/emoji_bridge/subject_marks.py",
@@ -5951,8 +6056,8 @@
     },
     {
       "path": "src/emoji_bridge/transfer.py",
-      "sha256": "ec67aa1fd0f41415a79f494ce1b4a447d58303140f7f48c8514423e3da6202d8",
-      "bytes": 9296
+      "sha256": "82e3c979ced50ac5be409676ee1e2b76e857e0e081315a6c3e2f1c86cdd1c202",
+      "bytes": 9700
     },
     {
       "path": "src/emoji_bridge/transfer_history.py",
@@ -5976,8 +6081,8 @@
     },
     {
       "path": "src/emoji_bridge/video.py",
-      "sha256": "152773b0cc6bb3b03df4a4cc1f59215b69ae13f0c8241f46d5be288255ea6fa0",
-      "bytes": 15752
+      "sha256": "7dae27a515d2deeaa7b0aafe5bd480e5ceba66dcbae6d27b6c7404eee8db90af",
+      "bytes": 15976
     },
     {
       "path": "src/emoji_bridge/video_preview.py",
@@ -5991,13 +6096,23 @@
     },
     {
       "path": "src/emoji_bridge/wechat.py",
-      "sha256": "31f6a93c7b50185bb79c5443409388713c8c5f15af2d170f1221295d6e9222b4",
-      "bytes": 21909
+      "sha256": "fe69f58aaafc03a8356f24466cbf1baff47ac92c9b436807d96405cdd5784145",
+      "bytes": 24030
     },
     {
       "path": "src/emoji_bridge/wechat_index.py",
       "sha256": "7e2f33e4d9d738c6506caf51c70b7c740b55f25f70e672de20208cc42f07a766",
       "bytes": 25850
+    },
+    {
+      "path": "src/emoji_bridge/wechat_visual.py",
+      "sha256": "224eab9b2e2c6834c7774df339785e93099d3f4d3a9d0d39abf08bbf44628690",
+      "bytes": 22645
+    },
+    {
+      "path": "src/emoji_bridge/wechat_visual_bridge.py",
+      "sha256": "500f0fe5d59d7281fdbf05c92f307aa60601384f2077213dfe10e5807d41af01",
+      "bytes": 28100
     },
     {
       "path": "src/emoji_bridge/window_handoff.py",
@@ -6016,13 +6131,18 @@
     },
     {
       "path": "TEMPLATE_CATALOG.json",
-      "sha256": "ac3fd0b587552682f10576d42231cd4f66ab15ed3c1f2802744dac1f96936a88",
-      "bytes": 292872
+      "sha256": "93c86748cee89a13ab2390842237bfeb755ed16a629e3e6bd36373ad5145b74b",
+      "bytes": 292898
     },
     {
       "path": "tests/test_builtin_upgrade_S0162.py",
       "sha256": "16aff2de3bbd2ec81bc1015f8dc04273cd5c815ca197d46d6aab082c8ba4a46c",
       "bytes": 2450
+    },
+    {
+      "path": "tests/test_download_startup_S0168.py",
+      "sha256": "56e2bb56d70d80e73f2fd1cc38280c09b66246f8157c045ccbbb7327eaa7488e",
+      "bytes": 2263
     },
     {
       "path": "third_party/cutout/anime-segmentation-LICENSE.txt",
@@ -6036,8 +6156,8 @@
     },
     {
       "path": "third_party/cutout/NOTICE.md",
-      "sha256": "27b0bbdf0192daabc231008387d2b40792cbbc655115081220a5098b7ed18717",
-      "bytes": 6752
+      "sha256": "298805f1b4ba7fe9f5cd3589fef35168af7f811b12795ea4e41c9552a3e325f9",
+      "bytes": 7211
     },
     {
       "path": "third_party/cutout/onnxruntime-LICENSE.txt",
@@ -6091,8 +6211,8 @@
     },
     {
       "path": "third_party/factory/NOTICE.md",
-      "sha256": "ff982c8f3474a9d7d75d79150e40ac20105b21238a865e9cf04f4c1f47d49d47",
-      "bytes": 5520
+      "sha256": "c1d7422d19b0c9c07498ff3ab62ac1ac6aa749b3bd15ce26308226407352d9e0",
+      "bytes": 6298
     },
     {
       "path": "third_party/factory/OpenCV-Apache-2.0.txt",
@@ -6125,9 +6245,14 @@
       "bytes": 1638
     },
     {
+      "path": "third_party/factory/Whisper-LICENSE.txt",
+      "sha256": "b5d65a59060e68c4ff940e1eddfa6f94b2d68fdf58ed7f4dd57721c997e35e9d",
+      "bytes": 1063
+    },
+    {
       "path": "third_party/FFmpeg-NOTICE.md",
-      "sha256": "5fab079bcb1e1fc296a2f3e10a020e311ea217d0ec090f2138437ebd8cb9fc21",
-      "bytes": 1876
+      "sha256": "1e90afe839849b759ac4457132b836e3b36618f83ebc3208840c39aa95bf166b",
+      "bytes": 2559
     },
     {
       "path": "third_party/meme_contrib/LICENSE",
@@ -6501,8 +6626,8 @@
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
-      "sha256": "8539ecf4534675d2368238ccb93daf4625cf002a394dca0bb54b1b47ca3783be",
-      "bytes": 7352
+      "sha256": "028cb3e2304149653e19c05d75ce2228ceff67f656035a8b30d4272bea455341",
+      "bytes": 7385
     }
   ],
   "scan_findings": []

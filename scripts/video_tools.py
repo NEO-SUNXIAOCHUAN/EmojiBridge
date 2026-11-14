@@ -48,6 +48,7 @@ class VideoWindow:
         self.seek_pool=ThreadPoolExecutor(max_workers=1,thread_name_prefix='video-seek');self.seek_token=0;self.seek_future=None
         self.output=None;self.photo=None;self.card_photo=None;self.stream=None;self.seek_after=None;self.pending_seek=None;self.frame_cache=None;self.selection=None
         self.original_preview=None;self.resize_after=None;self.seek_stop=threading.Event()
+        self.output_kind='gif';self.output_signature=None;self.result_size=None
         self.window=host if host is not None else tk.Toplevel(parent)
         self.window.title('EmojiBridge · 视频选段');self.window.geometry('1120x860');self.window.minsize(900,730)
         self.window.configure(background=BG);video_style(self.window);self.window.protocol('WM_DELETE_WINDOW',self.close)
@@ -98,8 +99,10 @@ class VideoWindow:
         ttk.Checkbutton(self.advanced,text='MP4 保留声音；尺寸填 0 为原尺寸，MP4 剩余透明区域使用白底',variable=self.audio).pack(anchor='w',pady=5)
         self.limit_note=ttk.Label(self.advanced,text='GIF 输出≤60秒；动态抠图按帧处理，限30分钟/18000帧/8GiB帧缓存。2～5秒仅是建议，预览播放完整选区。',style='Video.Muted.TLabel');self.limit_note.pack(anchor='w')
         self.footer=ttk.Frame(self.lower,padding=(20,4));self.footer.pack(fill='x')
-        self.card=ttk.Label(self.footer,text='生成后可直接拖出成品',anchor='w',compound='left');self.card.pack(side='left',fill='x',expand=True)
+        from editor_drag_card import DragCard
+        self.card=DragCard(self.footer,self);self.card.pack(side='left')
         self.card.drag_source_register(1,'DND_Files');self.card.dnd_bind('<<DragInitCmd>>',self.drag)
+        self.card.dnd_bind('<<DragEndCmd>>',self.drag_end)
         self.edit_result=ttk.Button(self.footer,text='编辑成品',command=self.edit_generated);self.edit_result.pack(side='right');self.edit_result.state(['disabled'])
         self.status=tk.StringVar(value='尚未打开素材；打开、粘贴或录屏后即可选择片段。')
         self.status_label=ttk.Label(self.lower,textvariable=self.status,wraplength=1020,padding=(20,8),style='Video.Muted.TLabel');self.status_label.pack(fill='x')
@@ -113,7 +116,31 @@ class VideoWindow:
         self.speech=SpeechPanel(self)
         ttk.Button(self.header,text='台词 / 字幕',command=self.speech.toggle).pack(side='left',padx=4)
         self.refresh_recent();self.update_source_state();self.poll_id=self.window.after(30,self.poll)
+        self.observed_options=self.output_key()
+        for var in (self.start,self.end,self.fps,self.width,self.audio,self.cutout_edge,self.cutout_fps,self.mode):
+            var.trace_add('write',lambda *_:self.options_changed())
+        self.position.trace_add('write',lambda *_:self.options_changed() if self.output_kind=='png' else None)
         if paths:self.open_file(paths[0])
+
+    def output_format(self):return self.output_kind.upper()
+    def output_size(self):return self.result_size if self.ready() else None
+    def is_preparing(self):return self.busy
+    def ready(self):return bool(not self.busy and self.output and self.output.is_file() and self.output_signature==self.output_key())
+    def output_key(self):
+        def number(var):
+            try:return float(var.get())
+            except (ValueError,tk.TclError):return str(var.get())
+        return (self.source['sha256'] if self.source else None,number(self.start),number(self.end),number(self.fps),number(self.width),self.audio.get(),self.mode.get(),number(self.cutout_edge),number(self.cutout_fps),self.position.get() if self.output_kind=='png' else None)
+    def options_changed(self):
+        key=self.output_key()
+        if key!=self.observed_options:self.observed_options=key;self.invalidate_output()
+    def invalidate_output(self):
+        self.output=None;self.output_signature=None;self.result_item=None;self.result_size=None
+        self.observed_options=self.output_key()
+        self.edit_result.state(['disabled']);self.card.set_preview(None);self.card.configure(text='拖出成品\n未准备')
+    def prepare(self):
+        if not self.busy:self.generate() if self.mode.get()=='抠出主体' else self.convert(self.output_kind if self.output_kind in ('gif','png','mp4') else 'gif')
+    def cancel_prepare(self):self.cancel_processing()
 
     def responsive(self,event):
         if event.widget is not self.window:return
@@ -133,7 +160,7 @@ class VideoWindow:
         self.limit_note.configure(wraplength=max(500,event.width-45))
         # Generated output keeps its own drag card. Before generation the status
         # already explains the next action, so no empty footer needs that space.
-        if short and not self.output:self.footer.pack_forget()
+        if short and not self.output and not self.busy:self.footer.pack_forget()
         elif not self.footer.winfo_manager():self.footer.pack(fill='x',before=self.status_label)
 
     def update_source_state(self):
@@ -178,7 +205,7 @@ class VideoWindow:
         if self.busy:return
         selection=(round(timeline.start,3),round(timeline.end,3))
         if self.selection!=selection:
-            self.output=None;self.result_item=None;self.edit_result.state(['disabled']);self.card.configure(image='',text='选区已变化，生成后可拖出本次成品')
+            self.invalidate_output()
         self.selection=selection
         self.stop_preview();self.start.set(f'{timeline.start:.3f}');self.end.set(f'{timeline.end:.3f}')
         self.position.set(timeline.position);self.seek(timeline.position,immediate=released)
@@ -228,6 +255,8 @@ class VideoWindow:
     def submit(self,fn,label):
         if self.busy:self.status.set('当前任务处理中，可取消后继续。');return False
         self.busy=True;self.cancel.clear();self.status.set(label);self.bar['value']=0
+        if not self.footer.winfo_manager():self.footer.pack(fill='x',before=self.status_label)
+        self.card.draw()
         self.update_source_state();self.progress_row.pack(fill='x')
         from emoji_bridge.task_activity import begin,finish
         from emoji_bridge.task_budget import admission
@@ -246,7 +275,7 @@ class VideoWindow:
         self.stop_preview();self.playback_keys.blur();self.seek_token+=1;self.result_item=None;self.edit_result.state(['disabled'])
         self.seek_stop.set()
         self.source=None;self.metadata=None;self.frame_cache=None
-        self.output=None;self.card.configure(image='',text='新文件读取中；生成成品后可以拖出')
+        self.invalidate_output();self.card.configure(text='新文件读取中；生成成品后可以拖出')
         def work():
             from emoji_bridge.video import probe
             from emoji_bridge.video_preview import FrameCache
@@ -315,7 +344,7 @@ class VideoWindow:
         except ValueError as exc:self.status.set(str(exc));return
         if self.busy:return
         self.stop_preview();source=dict(self.source)
-        self.output=None;self.card.configure(image='',text='正在准备本次动态主体…')
+        self.output_kind='gif';self.invalidate_output();request_key=self.output_key();self.card.configure(text='正在准备本次动态主体…')
         def work():
             from emoji_bridge.dynamic_cutout import video_animation,cutout_animation,save_subject
             import time
@@ -327,7 +356,7 @@ class VideoWindow:
             inferred=time.perf_counter()
             result['source_info']={'source_sha256':source['sha256'],'start':start,'end':end,'fps':fps,'max_edge':edge}
             item,doc,directory=save_subject(self.store,result,name=Path(source['name']).stem+' · 动态主体',cancel=self.cancel,progress=progress)
-            return {'output':self.store.original(item['id']),'cover':self.store.original(item['id']),'item':item,'warning':None,'edit_draft':directory,'edit_document':doc,'seconds':result['seconds'],
+            return {'output':self.store.original(item['id']),'output_key':request_key,'cover':self.store.original(item['id']),'item':item,'warning':None,'edit_draft':directory,'edit_document':doc,'seconds':result['seconds'],
                 'timings':{'decode':decoded-began,'matting':inferred-decoded,'encode_save':time.perf_counter()-inferred,'total_before_editor':time.perf_counter()-began,'cache_hit':result['cache_hit'],'stages':result['stages']}}
         self.submit(work,'准备动态主体；模型只加载一次…')
 
@@ -346,9 +375,9 @@ class VideoWindow:
         except ValueError as exc:self.status.set(str(exc));return
         if self.busy:return
         self.stop_preview();source=dict(self.source);seconds=self.position.get();audio=self.audio.get()
-        self.output=None;self.card.configure(image='',text='正在生成本次成品…')
+        self.output_kind=format;self.invalidate_output();request_key=self.output_key();self.card.configure(text='正在生成本次成品…')
         def work():
-            from emoji_bridge.video import convert,frame
+            from emoji_bridge.video import convert,frame,probe
             if format=='png':output=frame(source['path'],seconds,root=self.store.root/'video-output',cancel=self.cancel,progress=self.progress)
             else:output=convert(source['path'],start,end,format,root=self.store.root/'video-output',fps=fps if format=='gif' else None,width=width,audio=audio,cancel=self.cancel,progress=self.progress)
             provenance={'schema':'video-work-v1','source_sha256':source['sha256'],'source_path':source['path'],'start':start,'end':end,'frame_time':seconds if format=='png' else None,'format':format,'width':None if format=='png' else width,'fps':fps if format=='gif' else None}
@@ -357,15 +386,23 @@ class VideoWindow:
                 try:item,_=self.store.import_file(output,kind='edited',name=Path(source['name']).stem+(' · 当前帧' if format=='png' else ' · GIF片段'),source=json.dumps(provenance,ensure_ascii=False),cancel=self.cancel)
                 except (ValueError,OSError) as exc:warning='文件已生成，但入库未完成：'+str(exc)+'。可先拖出 / 导出，再调整设置重试。'
             cover=frame(output,0,root=self.store.root/'video-output',width=96,cancel=self.cancel,progress=self.progress) if format=='mp4' else output
-            return {'output':Path(output),'cover':cover,'item':item,'warning':warning}
+            dimensions=probe(output,cancel=self.cancel) if format=='mp4' else None
+            return {'output':Path(output),'output_key':request_key,'cover':cover,'item':item,'warning':warning,'output_size':(dimensions['width'],dimensions['height']) if dimensions else None}
         self.submit(work,'正在生成 '+format.upper()+'…')
 
     def drag(self,event=None):
-        if not self.output:return ('refuse_drop','DND_Files',())
+        if self.card.cancel_hit():return ('refuse_drop','DND_Files',())
+        self.card.dragged=True;self.card.hide_tip()
+        if not self.ready():
+            self.prepare();return ('refuse_drop','DND_Files',())
         return ('copy','DND_Files',(str(self.output),))
 
+    def drag_end(self,event=None):
+        self.card.pressed=None;self.card.dragged=False;self.card.draw()
+        self.status.set('拖放已取消，成品仍可再次拖出。' if getattr(event,'action',None) in ('refuse_drop','none') else '拖放已结束，文件仍保留；放入聊天输入框后请自行确认发送。')
+
     def export(self):
-        if not self.output:self.status.set('请先用“另存为”生成文件。');return
+        if not self.ready():self.status.set('请先生成当前选段的成品。');return
         path=filedialog.asksaveasfilename(parent=self.window,defaultextension=self.output.suffix,filetypes=[(self.output.suffix[1:].upper(),'*'+self.output.suffix)])
         if path:
             source=self.output
@@ -375,8 +412,8 @@ class VideoWindow:
     def image(self,path,card=False):
         with Image.open(path) as source:value=source.convert('RGBA')
         if card:
-            value.thumbnail((76,44),Image.Resampling.LANCZOS);self.card_photo=ImageTk.PhotoImage(value)
-            self.card.configure(image=self.card_photo,text=f'  拖出 {self.output.suffix[1:].upper()} · 已保存在本机')
+            self.result_size=value.size;self.card.set_preview(value)
+            self.card.configure(text='拖出成品\n就绪')
         else:self.show_image(value)
 
     def show_image(self,value):
@@ -404,7 +441,8 @@ class VideoWindow:
                     continue
                 if event[0]=='progress':self.status.set(event[1]);self.bar['value']=event[2];continue
                 self.busy=False;self.update_source_state();self.progress_row.pack_forget()
-                if event[0]=='error':self.status.set('未完成：'+event[1]+'；原文件保留，可重试。');self.card.configure(text='未生成本次成品');continue
+                self.card.draw()
+                if event[0]=='error':self.status.set('未完成：'+event[1]+'；原文件保留，可重试。');self.card.configure(text='已取消' if self.cancel.is_set() else '点此重试');continue
                 value=event[1];self.bar['value']=100
                 if 'transcript' in value:self.speech.loaded(value)
                 if 'source' in value:
@@ -417,16 +455,22 @@ class VideoWindow:
                     from video_timeline import clock
                     self.timeline.set_source(self.frame_cache,end=min(2,duration));self.position_label.configure(text=f'{clock(0)} / {clock(duration)}')
                     self.status.set(f'{self.source["name"]} · {duration:.2f}秒 · {self.metadata["width"]}×{self.metadata["height"]}')
-                    self.card.configure(image='',text='生成后可直接拖出成品')
+                    self.card.configure(text='拖出成品\n未准备')
                 if 'frame' in value:self.image(value['frame'])
                 if 'preview_image' in value:self.show_image(value['preview_image'])
+                if 'output' in value and (self.cancel.is_set() or value.get('output_key')!=self.output_key()):
+                    self.invalidate_output();self.status.set('设置已变化或任务已取消，已完成文件保留；请重新生成当前选段。');continue
                 if 'edit_draft' in value and self.on_edit and not self.cancel.is_set():
                     import time
                     began=time.perf_counter()
                     if self.on_edit(value['edit_draft'],prepared_document=value['edit_document']):self.edit_return()
                     self.last_timings={**value.get('timings',{}),'enter_editor':time.perf_counter()-began}
                 if 'output' in value:
-                    self.output=value['output'];self.image(value['cover'],card=True);self.result_item=value['item']
+                    if self.cancel.is_set() or value.get('output_key')!=self.output_key():
+                        self.invalidate_output();self.status.set('设置已变化或任务已取消，已完成文件保留；请重新生成当前选段。');continue
+                    self.output=Path(value['output']);self.output_kind=self.output.suffix[1:];self.output_signature=self.output_key();self.image(value['cover'],card=True);self.result_item=value['item']
+                    if value.get('output_size'):self.result_size=value['output_size']
+                    self.observed_options=self.output_key()
                     if not self.footer.winfo_manager():self.footer.pack(fill='x',before=self.status_label)
                     self.edit_result.state(['!disabled'] if self.result_item else ['disabled'])
                     if value['item'] and self.on_saved:self.on_saved(value['item'])

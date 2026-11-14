@@ -401,11 +401,13 @@ class DesktopService:
         return True
 
     def dependency_status(self):
-        from emoji_bridge.background_remove import cache_root,runtime_root
-        from emoji_bridge.video import TOOLS_ROOT
+        from emoji_bridge.background_remove import cache_root,runtime_root,bundled_models
+        from emoji_bridge.video import TOOLS_ROOT,bundled_tools
         import shutil
-        folder=Path(os.environ.get('EMOJI_BRIDGE_FFMPEG_BIN',TOOLS_ROOT))
+        default=bundled_tools() if all((bundled_tools()/n).is_file() for n in ('ffmpeg.exe','ffprobe.exe')) else TOOLS_ROOT
+        folder=Path(os.environ.get('EMOJI_BRIDGE_FFMPEG_BIN',default))
         model=cache_root()/'models/u2net.onnx'
+        if not model.is_file():model=bundled_models()/'u2net.onnx'
         return {'video':all((folder/name).is_file() or shutil.which(name) for name in ('ffmpeg.exe','ffprobe.exe')),
                 'cutout':(runtime_root()/'onnxruntime/__init__.py').is_file(), 'model':model.is_file(),
                 'model_path':str(model),'video_path':str(folder),'library':str(self.store.root)}

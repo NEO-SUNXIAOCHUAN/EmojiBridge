@@ -2,7 +2,7 @@
  [long]$WindowHandle,
  [int]$ClientProcessId,
  [string]$Executable,
- [ValidateSet('capabilities','prepare-accessibility','snapshot','own-session-target','own-search-start','own-search-target','message-rows','latest-messages','toggle-panel','open-file','send','send-batch','panel','panel-tab','menu','import-status','clear-staged')][string]$Action='snapshot',
+ [ValidateSet('capabilities','prepare-accessibility','snapshot','own-session-target','own-search-start','own-search-target','message-rows','latest-messages','toggle-panel','open-file','send','send-batch','panel','panel-tab','menu','menu-observe','import-status','clear-staged')][string]$Action='snapshot',
  [long]$ParentHandle=0,
  [switch]$Server
 )
@@ -36,7 +36,7 @@ function Check-Window {
  if($ownerId -ne $ClientProcessId -or (Get-Process -Id $ClientProcessId).Path -ne $Executable){throw 'process_identity_changed'}
  Confirm-BridgeVersion 'wechat' $Executable
  $front=[BridgeGuard]::GetForegroundWindow().ToInt64()
- if($Action -ne 'capabilities' -and $front -ne $WindowHandle -and -not ($Action -in @('menu','own-search-target','import-status') -and $ParentHandle -gt 0 -and $front -eq $ParentHandle)){throw 'foreground_changed'}
+ if($Action -ne 'capabilities' -and $front -ne $WindowHandle -and -not ($Action -in @('menu','menu-observe','own-search-target','import-status') -and $ParentHandle -gt 0 -and $front -eq $ParentHandle)){throw 'foreground_changed'}
  if(([BridgeGuard]::GetAsyncKeyState(27) -band 0x8000) -ne 0){throw 'cancelled_escape'}
 }
 function Control-Error($role,$count){
@@ -181,7 +181,9 @@ try {
   # Startup only: request the standard client accessibility object once when
   # Qt exposes only a shell. Never invoke a control or change client settings.
   # This runs in the cancellable, time-bounded helper, not the desktop thread.
-  $nodes=$root.FindAll([System.Windows.Automation.TreeScope]::Subtree,[System.Windows.Automation.Condition]::TrueCondition).Count
+  # Match the standalone probe: count descendants, excluding the root window.
+  # Two shell descendants must not become three and skip the recovery request.
+  $nodes=$root.FindAll([System.Windows.Automation.TreeScope]::Descendants,[System.Windows.Automation.Condition]::TrueCondition).Count
   $requested=$false;$hr=$null
   if($nodes -le 2){
    Check-Window
@@ -206,7 +208,7 @@ try {
   @{ok=$true;send_ready=$ready;read_only=$true}|ConvertTo-Json -Compress
   return
  }
- if($Action -in @('panel','panel-tab','menu','import-status')){
+ if($Action -in @('panel','panel-tab','menu','menu-observe','import-status')){
   $parentId=[uint32]0
   [void][BridgeGuard]::GetWindowThreadProcessId([IntPtr]$ParentHandle,[ref]$parentId)
   if($parentId -ne $ClientProcessId){throw 'popup_parent_mismatch'}
@@ -236,7 +238,9 @@ try {
    @{ok=$true;state=$state;read_only=$true}|ConvertTo-Json -Compress
    return
   }
-  $null=Own-Chat ([System.Windows.Automation.AutomationElement]::FromHandle([IntPtr]$ParentHandle))
+  # Visual navigation already verified the assistant before this read-only popup probe.
+  # Do not walk the unavailable main tree again; normal native menu retains that check.
+  if($Action -ne 'menu-observe'){$null=Own-Chat ([System.Windows.Automation.AutomationElement]::FromHandle([IntPtr]$ParentHandle))}
   if($Action -in @('panel','panel-tab')){
    $tab=Named-Control $root '自定义表情' ([System.Windows.Automation.ControlType]::TabItem)
    if($Action -eq 'panel-tab'){
@@ -255,6 +259,7 @@ try {
    $cond=[System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::NameProperty,'添加到表情')
    $items=@($root.FindAll([System.Windows.Automation.TreeScope]::Descendants,$cond)|Where-Object {-not $_.Current.IsOffscreen})
    if($items.Count -gt 1){throw 'uia_control_not_unique'}
+   Check-Window
    $out=@{ok=$true;available=($items.Count -eq 1 -and $items[0].Current.IsEnabled)}
    if($items.Count -eq 1){$out.target=Rect $items[0]}
    $out|ConvertTo-Json -Compress
@@ -368,7 +373,7 @@ if($Server){
 while($null -ne ($line=[Console]::In.ReadLine())){
   try {
    $request=ConvertFrom-Json $line
-   if($request.action -notin @('capabilities','prepare-accessibility','snapshot','own-session-target','own-search-start','own-search-target','message-rows','latest-messages','toggle-panel','open-file','send','send-batch','panel','panel-tab','menu','import-status','clear-staged')){throw 'invalid_uia_action'}
+   if($request.action -notin @('capabilities','prepare-accessibility','snapshot','own-session-target','own-search-start','own-search-target','message-rows','latest-messages','toggle-panel','open-file','send','send-batch','panel','panel-tab','menu','menu-observe','import-status','clear-staged')){throw 'invalid_uia_action'}
    $WindowHandle=[long]$request.window; $ClientProcessId=[int]$request.pid
    $Executable=[string]$request.exe; $ParentHandle=[long]$request.parent; $Action=[string]$request.action
    Invoke-Request

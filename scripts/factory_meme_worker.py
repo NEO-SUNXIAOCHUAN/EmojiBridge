@@ -7,6 +7,7 @@ from pathlib import Path
 # keep isolation from the current directory and global Python environment.
 APP=Path(__file__).resolve().parents[1]
 sys.path[:0]=[str(APP/'scripts'),str(APP/'src')]
+from factory_template_input import catalog_defaults,prepare_texts
 
 
 def main():
@@ -42,7 +43,7 @@ def main():
                 default_texts=params.default_texts,parameters=schema,animation_policy=animation,
                 version=engine.__version__,source='https://github.com/MemeCrafters/meme-generator',license='MIT (code); resources individually sourced',
                 verified=False))
-        result.write_text(json.dumps(catalog,ensure_ascii=False),'utf-8');return
+        result.write_text(json.dumps([catalog_defaults(row) for row in catalog],ensure_ascii=False),'utf-8');return
     if request['action']=='verify':
         from PIL import Image
         folder=Path(request['folder']);folder.mkdir(parents=True,exist_ok=True);results=[]
@@ -51,10 +52,11 @@ def main():
             if request.get('keys') and meme.key not in request['keys']:continue
             tick=time.perf_counter();params=meme.params_type
             try:
-                texts=params.default_texts or ['今天也要开心']*params.min_texts
+                defaults=catalog_defaults(dict(key=meme.key,min_texts=params.min_texts,default_texts=params.default_texts))
+                texts=defaults['default_texts'] or ['今天也要开心']*defaults['min_texts']
                 texts=texts[:params.max_texts]
                 while len(texts)<params.min_texts:texts.append('一起出发')
-                output=meme(images=[Path(request['sample'])]*params.min_images,texts=texts,args={})
+                output=meme(images=[Path(request['sample'])]*params.min_images,texts=prepare_texts(meme.key,texts,params.min_images),args={})
                 path=folder/(meme.key+'.media');path.write_bytes(output.getvalue())
                 with Image.open(path) as image:
                     fmt=image.format;size=image.size;frames=image.n_frames if hasattr(image,'n_frames') else 1
@@ -68,7 +70,7 @@ def main():
     from factory_animation_input import install
     install(engine,request)
     meme=engine.get_meme(request['key'].removeprefix('meme:'))
-    output=meme(images=[Path(p) for p in request.get('images',[])],texts=request.get('texts',[]),args=request.get('parameters',{}))
+    output=meme(images=[Path(p) for p in request.get('images',[])],texts=prepare_texts(request['key'],request.get('texts',[]),len(request.get('images',[]))),args=request.get('parameters',{}))
     if request.get('preview'):
         from PIL import Image
         with Image.open(output) as image:

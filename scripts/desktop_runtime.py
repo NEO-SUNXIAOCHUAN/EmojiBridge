@@ -9,4 +9,8 @@ def activate():
     folder=bundled if (bundled/'webview').exists() else Path(os.environ.get('LOCALAPPDATA',Path.home()))/'EmojiBridge/optional/desktop-webview-6.2.1'
     if not (folder/'webview/__init__.py').is_file():
         raise RuntimeError('新版桌面组件未准备好。请完整解压体验包，或使用“启动原版编辑器”。')
+    if folder==bundled and os.name=='nt':
+        from desktop_startup import prepare_downloaded_assemblies,ensure_webview2
+        prepare_downloaded_assemblies(APP)
+        if not ensure_webview2(APP):raise SystemExit(0)
     sys.path.insert(0,str(folder));return folder

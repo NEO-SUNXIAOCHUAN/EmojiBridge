@@ -49,10 +49,8 @@ class DragCard(tk.Canvas):
         p=lambda n:px(self,n);w=p(196);h=p(64)
         try:active=self.hovered or self.focus_get()==self
         except (KeyError,tk.TclError):active=self.hovered
-        doc=self.owner.editor.doc
-        from emoji_bridge.work_output import preferred_format
-        kind=preferred_format(doc).upper() if doc else 'PNG'
-        cancelling=self.owner.future is not None or self.owner.operation_future is not None
+        kind=self.owner.output_format()
+        cancelling=self.owner.is_preparing()
         stamp=(active,kind,self.badge,str(self.preview),cancelling)
         if stamp==getattr(self,'stamp',None):return
         self.stamp=stamp;self.delete('all')
@@ -74,7 +72,7 @@ class DragCard(tk.Canvas):
                 for y in (26,32,38):self.create_oval(p(x),p(y),p(x+1),p(y+1),fill='#8b9eb7',outline='')
 
     def press(self,event):self.pressed=(event.x,event.y);self.dragged=False;self.hide_tip();self.focus_set()
-    def cancel_hit(self):return self.pressed and self.pressed[0]>=px(self,166) and self.pressed[1]>=px(self,33) and (self.owner.future or self.owner.operation_future)
+    def cancel_hit(self):return self.pressed and self.pressed[0]>=px(self,166) and self.pressed[1]>=px(self,33) and self.owner.is_preparing()
 
     def release(self,event):
         if self.pressed and not self.dragged and abs(event.x-self.pressed[0])+abs(event.y-self.pressed[1])<px(self,6):

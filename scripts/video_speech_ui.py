@@ -11,12 +11,27 @@ class SpeechPanel:
   self.panel=ttk.Frame(video.window,padding=12);self.model=tk.StringVar(value='tiny')
   row=ttk.Frame(self.panel);row.pack(fill='x');ttk.Label(row,text='台词与字幕').pack(side='left');ttk.Combobox(row,textvariable=self.model,values=['tiny','base','small'],state='readonly',width=8).pack(side='left',padx=5)
   ttk.Button(row,text='本地转写',command=self.transcribe).pack(side='left');ttk.Button(row,text='收起',command=self.toggle).pack(side='right')
+  tools=ttk.Frame(self.panel);tools.pack(fill='x',pady=4)
+  ttk.Button(tools,text='下载并安装所选模型',command=self.prepare_model).pack(side='left')
+  ttk.Button(tools,text='官方下载页',command=self.download_page).pack(side='left',padx=4)
   self.query=tk.StringVar();ttk.Entry(self.panel,textvariable=self.query).pack(fill='x',pady=6);self.query.trace_add('write',lambda *_:self.refresh())
   self.list=tk.Listbox(self.panel,height=5,exportselection=False);self.list.pack(fill='x');self.list.bind('<<ListboxSelect>>',self.select)
   self.text=tk.Text(self.panel,height=2,wrap='word');self.text.pack(fill='x',pady=5)
   actions=ttk.Frame(self.panel);actions.pack(fill='x')
   for label,fn in [('保存校对',self.correct),('导出SRT',self.srt),('字幕进入所选片段',self.edit)]:ttk.Button(actions,text=label,command=fn).pack(side='left',padx=2)
-  ttk.Label(self.panel,text='转写来自音频；不会识别或抹除画面中的硬字幕。模型首次下载到本机。',style='Muted.TLabel').pack(anchor='w',pady=5)
+  ttk.Label(self.panel,text='默认 tiny 随完整离线包提供。base / small 需先下载；点“下载并安装”即可，完成后无需再次下载。',wraplength=360,style='Muted.TLabel').pack(anchor='w',pady=5)
+ def download_page(self):
+  import webbrowser
+  model=self.model.get()
+  if model in ('tiny','base','small'):webbrowser.open('https://huggingface.co/Systran/faster-whisper-'+model+'/tree/main')
+ def prepare_model(self):
+  v=self.v
+  if v.busy:return
+  model=self.model.get();folder=v.store.root/'speech/model-prepare'/model;folder.mkdir(parents=True,exist_ok=True)
+  def work():
+   worker('speech','factory_speech_worker.py',{'action':'prepare','model':model,'models':str(models('speech')),'result':str(folder/'ready.json')},folder,v.cancel,timeout=900)
+   return {'message':model+' 模型已安装，点击本地转写即可。'}
+  v.submit(work,'下载并校验字幕模型，可取消；完成后自动安装')
  def toggle(self):
   if self.panel.winfo_manager():self.panel.pack_forget()
   else:self.panel.pack(side='right',fill='y',before=self.v.preview)

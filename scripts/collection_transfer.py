@@ -6,6 +6,7 @@ import hashlib
 import json
 from pathlib import Path
 import uuid
+import time
 
 from emoji_bridge import catalog
 from emoji_bridge.materials import now
@@ -87,8 +88,30 @@ def prepare(plan, path, profile, store, cancel, save, *, runner=import_originals
     """Acquire/persist originals with existing receipts and retryable import jobs."""
     source_profile=Path(plan.get('source_profile') or profile)
     library_path = source_profile / 'runtime-data/T005/library.json'
-    with single_instance(source_profile / 'runtime-data/T005/collection.lock'):
+    from qq_appearance_prepare import preparation_session
+    from emoji_bridge.appearance_originals import evidence_session
+    from emoji_bridge.media import inspection_session
+    with single_instance(source_profile / 'runtime-data/T005/collection.lock'), preparation_session(), evidence_session(), inspection_session():
         check_profile(plan, profile)
+        if runner is import_originals:
+            library=catalog.read(library_path)
+            known={i['id']:i for i in library['clients']['qq']['items']}
+            requested=[]
+            for job in plan['jobs']:
+                ref=job.get('source_ref') or {}
+                item=known.get(ref.get('item_id'))
+                if (job['item_id'].startswith('catalog:') and ref.get('client')=='qq'
+                        and plan['target']!='qq' and item and binding(item)==ref.get('binding')
+                        and not item.get('original_available')):
+                    requested.append(item['id'])
+            if requested and not cancel.exists():
+                from qq_selected_prepare import complete_selected
+                try:complete_selected(library_path,list(dict.fromkeys(requested)),cancel)
+                except (ValueError,OSError) as exc:
+                    # Ready subset results have already been merged. Preserve
+                    # the source failure for remaining items and never resend.
+                    plan['selected_preparation_reason']=str(exc)
+                    save()
         for job in plan['jobs']:
             if cancel.exists(): return
             if not job['item_id'].startswith('catalog:'): continue
@@ -117,7 +140,13 @@ def prepare(plan, path, profile, store, cancel, save, *, runner=import_originals
                     save_json(sub,original_plan)
                 job.update(status='acquiring_original', reason='正在校验并复用所选原件')
                 save()
-                result = runner(sub, library_path, store, cancel, progress=lambda n,t,s: save())
+                started = time.perf_counter()
+                def original_progress(n,t,message):
+                    job['reason'] = message
+                    job['original_preparation_seconds'] = round(time.perf_counter()-started,3)
+                    save()
+                result = runner(sub, library_path, store, cancel, progress=original_progress)
+                job['original_preparation_seconds'] = round(time.perf_counter()-started,3)
                 value = result['jobs'][0]
                 if value.get('material_id'):
                     item = store.get(value['material_id'])

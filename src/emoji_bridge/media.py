@@ -17,6 +17,9 @@ _inspections=ContextVar('complete_media_inspections',default=None)
 @contextmanager
 def inspection_session():
     """Task-local full-decode reuse for exact bytes, never metadata from disk."""
+    if _inspections.get() is not None:
+        yield
+        return
     cache=OrderedDict();token=_inspections.set(cache)
     try:yield
     finally:cache.clear();_inspections.reset(token)

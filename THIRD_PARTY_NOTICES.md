@@ -18,7 +18,7 @@ S0163 首发候选。原创代码版权 Neo，GPL-3.0-only；第三方各自原�
 | meme-generator / meme-generator-contrib | 独立模板 worker / 部分模块复制 | MIT，third_party/factory 与 third_party/meme_contrib；插画/字体单独核对 |
 | hitherdither | Atkinson 实现改编 | MIT，third_party/factory/hitherdither-LICENSE |
 | rembg | 预处理和蒙版缩放改编 | MIT，third_party/cutout/NOTICE.md 与完整原许可 |
-| FFmpeg | 可选独立进程，按需取得 | GPLv3 Gyan 构建；不随包；third_party/FFmpeg-NOTICE.md |
+| FFmpeg | S0167 离线测试包内独立进程 | GPLv3 Gyan 构建；原 LICENSE / README 随 runtime/ffmpeg；third_party/FFmpeg-NOTICE.md |
 | gifski | 可选独立编码器 | AGPLv3，third_party/factory/gifski-LICENSE；不随软件包 |
 | SAM2 | 可选跟随模型调用 | 原许可及声明见 third_party/sam2；权重按需 |
 | miniPaint | 旧草稿兼容/可选组件 | MIT，third_party/miniPaint-MIT.txt；主要编辑器为原生 Tk |

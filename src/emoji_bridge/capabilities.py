@@ -39,7 +39,7 @@ def dependencies(name):
     override=os.environ.get('EMOJI_BRIDGE_'+name.upper()+'_DEPENDENCIES')
     if override:return Path(override)
     bundled=APP/'runtime'/name
-    if name in ('meme','vision') and bundled.is_dir():return bundled
+    if name in ('meme','vision','speech') and bundled.is_dir():return bundled
     target=root()/name/'packages'
     # Reuse the already prepared standalone runtimes used by earlier pilots.
     # New installations still use one predictable directory per capability.
@@ -58,10 +58,10 @@ def ensure(name,cancel=None,progress=None):
         from .offline_components import specification,install
         spec=specification(APP,name)
         if spec:return install(APP,root(),name,spec,cancel,progress)
-    if name in ('meme','vision') and target==APP/'runtime'/name:
+    if name in ('meme','vision','speech') and target==APP/'runtime'/name:
         ready=target/'ready.json'
         complete=(ready.is_file() and json.loads(ready.read_text('utf-8')).get('packages')==list(PACKAGES[name])
-                and (target/('meme_generator/__init__.py' if name=='meme' else 'rapidocr/__init__.py')).is_file())
+                and (target/({'meme':'meme_generator','vision':'rapidocr','speech':'faster_whisper'}[name]+'/__init__.py')).is_file())
         if complete and name=='vision':
             import hashlib
             try:
@@ -72,9 +72,9 @@ def ensure(name,cancel=None,progress=None):
                     if not path.is_relative_to(target.resolve()) or not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest()!=model['sha256']:complete=False;break
             except (OSError,ValueError,KeyError):complete=False
         if complete:
-            if progress:progress('使用随包模板组件' if name=='meme' else '使用随包识字 / 跟随组件',0,0)
+            if progress:progress('使用随包模板组件' if name=='meme' else '使用随包字幕组件' if name=='speech' else '使用随包识字 / 跟随组件',0,0)
             return target
-        raise RuntimeError(('随包模板组件' if name=='meme' else '随包识字 / 跟随组件')+'不完整，请重新完整解压新版；原图和作品保留')
+        raise RuntimeError(('随包模板组件' if name=='meme' else '随包字幕组件' if name=='speech' else '随包识字 / 跟随组件')+'不完整，请重新完整解压新版；原图和作品保留')
     folder=target.parent;folder.mkdir(parents=True,exist_ok=True)
     ready=folder/'ready.json'
     if ready.is_file() and json.loads(ready.read_text('utf-8')).get('packages')==list(PACKAGES[name]):return target

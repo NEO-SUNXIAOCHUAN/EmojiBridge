@@ -29,8 +29,11 @@ class ScribbleTools:
         ttk.Combobox(body,textvariable=self.model,values=tuple(MODELS),state='readonly').pack(fill='x',pady=8)
         ttk.Label(body,text='效果不理想可换模型，再点击处理。',wraplength=230,foreground=MUTED).pack(fill='x',pady=(0,8))
         offline=disclosure(body,'模型文件')
-        ttk.Label(offline,text='首次使用需下载约 168–214 MB。无法下载时，可导入对应的 ONNX 模型；原文件会保留。',wraplength=230,foreground=MUTED).pack(fill='x')
+        self.model_status=ttk.Label(body,wraplength=230,foreground=MUTED);self.model_status.pack(fill='x')
+        ttk.Button(offline,text='下载所选模型（浏览器）',command=self.download_model).pack(fill='x',pady=4)
+        ttk.Label(offline,text='下载完成后点下方导入，选择 ONNX 文件或配套 ZIP 即可，无需找安装目录。',wraplength=230,foreground=MUTED).pack(fill='x')
         ttk.Button(offline,text='导入所选模型…',command=self.import_model).pack(fill='x',pady=4)
+        self.model.trace_add('write',self.refresh_model_status);self.refresh_model_status()
         self.auto_button=ttk.Button(actions,text='自动抠主体',width=1,command=self.start_auto,style='Editor.Primary.TButton');self.auto_button.grid(row=0,column=0,sticky='ew',padx=(0,3))
         row=ttk.Frame(body);row.pack(fill='x')
         ttk.Radiobutton(row,text='标记主体',variable=self.mode,value='keep',command=self.enable_marks).pack(side='left')
@@ -223,13 +226,23 @@ class ScribbleTools:
     def start(self):return self.submit(False)
     def start_auto(self):return self.submit(True)
 
+    def refresh_model_status(self,*_):
+        from emoji_bridge.background_remove import model_present
+        name=MODELS.get(self.model.get(),'u2net')
+        self.model_status.configure(text='已找到本地模型，处理时会校验。' if model_present(name) else '所选模型需下载（约 168–214 MB），下载并导入后可离线使用。')
+
+    def download_model(self):
+        import webbrowser
+        from emoji_bridge.background_remove import model_url
+        webbrowser.open(model_url(MODELS[self.model.get()]))
+
     def import_model(self):
         e=self.editor
         if e.busy or self.active:return
         from tkinter import filedialog
         from emoji_bridge.background_remove import import_model
         label=self.model.get();model=MODELS[label]
-        source=filedialog.askopenfilename(parent=e.window,title='导入 '+label,filetypes=[('ONNX 模型','*.onnx')])
+        source=filedialog.askopenfilename(parent=e.window,title='导入 '+label,filetypes=[('模型文件或配套模型包','*.onnx *.zip')])
         if not source:return
         self.cancel.clear()
         def progress(stage,n=0,total=0):self.events.put(('progress',stage,n,total))
@@ -317,6 +330,7 @@ class ScribbleTools:
         self.pending=None;self.apply_button.grid_remove();self.deactivate();e.set_cursor('arrow');e.changed('已应用透明主体，可撤销或保存为素材');e.paint(None,e.doc.size)
 
     def settled(self):
+        self.refresh_model_status()
         self.active=False;self.bar.stop();self.stop.grid_remove();self.sync_actions()
 
     def stop_processing(self):

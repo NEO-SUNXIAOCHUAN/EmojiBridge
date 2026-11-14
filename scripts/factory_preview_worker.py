@@ -6,6 +6,8 @@ directly from frames. The engine's frame evaluation and timing remain unchanged.
 import argparse,json,sys,time,os
 from pathlib import Path
 from io import BytesIO
+sys.path.insert(0,str(Path(__file__).resolve().parent))
+from factory_template_input import prepare_texts
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--dependencies');args=parser.parse_args();sys.path.insert(0,args.dependencies)
@@ -35,7 +37,7 @@ def main():
         tick=time.perf_counter();result=Path(request['result']);meta=result.with_suffix('.json')
         try:
             edge=request.get('edge',384)
-            output=engine.get_meme(request['key'].removeprefix('meme:'))(images=[Path(p) for p in request['images']],texts=request['texts'],args=request['parameters'])
+            output=engine.get_meme(request['key'].removeprefix('meme:'))(images=[Path(p) for p in request['images']],texts=prepare_texts(request['key'],request['texts'],len(request['images'])),args=request['parameters'])
             # Templates which use a separate writer still work; decode just the
             # produced display file once, never on the UI thread.
             with Image.open(output) as source:

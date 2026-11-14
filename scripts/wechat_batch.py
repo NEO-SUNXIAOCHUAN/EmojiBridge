@@ -385,13 +385,21 @@ def execute(assets,cancel=None,resume_sent=False,progress=None,retry_approvals=N
             q.bind()
             active[0].report['client_ready_seconds']=round(time.perf_counter()-started,4)
             for runner in active:runner.q=q;runner.cancelled()
-            groups=[active[n:n+SEND_GROUP_SIZE] for n in range(0,len(active),SEND_GROUP_SIZE)]
-            manifest={'group_size':SEND_GROUP_SIZE,'total':len(active),'groups':[
+            # Visual proof needs every intact preview visible at once. Five
+            # files can create a scrollable draft on small windows. Native
+            # batches retain their existing capacity; staged recovery must
+            # prove the original batch as a whole, never a subset of a draft.
+            group_size=2 if getattr(q,'visual',None) is not None and not (resume_staged or resume_sent) else SEND_GROUP_SIZE
+            groups=[active[n:n+group_size] for n in range(0,len(active),group_size)]
+            manifest={'group_size':group_size,'total':len(active),'groups':[
                 {'number':n+1,'state':'queued','assets':[str(r.asset_path) for r in group]}
                 for n,group in enumerate(groups)]}
             save_json(folder/'groups.json',manifest)
             for n,current in enumerate(groups):
                 current[0].cancelled()
+                # A new group's media does not exist in the composer yet.
+                # Only an explicitly staged recovery may prove it here.
+                if getattr(q,'visual',None) is not None:q.visual.expected=current if resume_staged else []
                 group_info={'number':n+1,'total':len(groups),'size':len(current)}
                 group_folder=folder if len(groups)==1 else folder/'groups'/str(n+1)
                 group_folder.mkdir(parents=True,exist_ok=True)
@@ -425,6 +433,9 @@ def execute(assets,cancel=None,resume_sent=False,progress=None,retry_approvals=N
             confirm_index(runners,folder,cancel,**index_options)
             notify('done')
     except Exception as exc:
+        # Startup/history/lock failures before runner creation must remain
+        # visible to the caller rather than becoming an empty success result.
+        if not runners:raise
         focus=None
         if q and q.window:
             h=user.GetForegroundWindow()
@@ -483,6 +494,7 @@ def send_batch(active,q,folder,progress=None):
             r.report.update(file_path_verified=True,file_submission='picker_submit_pending')
             r.boundary('batch_send_pending')
     selected=dialog_action(dialog,q.window,q.exe,'ChooseMany',files,before_choose,batch_limit=len(files))
+    if getattr(q,'visual',None) is not None:q.visual.expected=active
     save_json(folder/'selected.json',selected)
     for r in active:r.report['file_submission']='selected_not_sent'
     step('waiting_composer')
@@ -509,6 +521,7 @@ def send_staged_batch(active,q,rect,hits,progress=None):
     # Click acknowledgement permits add-only recovery, never a second send.
     for runner in active:
         runner.record('batch_send_requested');runner.report['file_submission']='send_requested'
+    if getattr(q,'visual',None) is not None:q.visual.expected=[]
     deadline=time.monotonic()+30
     while not q.uia()['input_empty']:
         active[0].cancelled()
@@ -653,7 +666,17 @@ def wait_staged_batch(q,dialog,active,timeout=15):
             if dialogs or not hidden_picker_return(q,foreground):raise StopAutomation('foreground_changed')
             for runner in active:runner.report['hidden_picker_return_observed']=True
         if not dialogs and foreground==q.window.hwnd and user.IsWindowEnabled(q.window.hwnd):
-            snap=q.uia()
+            try:snap=q.uia()
+            except StopAutomation as exc:
+                # Only the visual preview's intact-image match may still be
+                # loading after the owned picker closes. Never poll past draft,
+                # focus, identity or ambiguity failures, and never select again.
+                if (getattr(q,'visual',None) is None or
+                        str(exc)!='staged_batch_item_not_unique'):raise
+                reason=str(exc)
+                if time.monotonic()>=deadline:raise StopAutomation(reason)
+                time.sleep(.1)
+                continue
             count=snap.get('media_object_count',0)
             if not snap.get('input_empty') and (not snap.get('input_only_media_objects') or count>len(active)):
                 raise StopAutomation('composer_not_expected_media_batch')

@@ -47,7 +47,11 @@ def validate(record, expected):
     scan=read(s['scan']);items=[i for i in scan['items'] if i['id']==s['item_id']]
     if (scan.get('source_kind')!='personal_favorites_ui' or len(items)!=1
             or any(items[0][k]!=s['selected'][k] for k in ('page','position','rect'))
-            or items[0]['rect'][3]>279):raise ValueError('observed_favorite_identity_invalid')
+            ):raise ValueError('observed_favorite_identity_invalid')
+    from PIL import Image
+    from .paging import full_cell
+    with Image.open(s['page_image']) as image:
+        if not full_cell(image,items[0]['rect']):raise ValueError('observed_favorite_identity_invalid')
     return r
 
 

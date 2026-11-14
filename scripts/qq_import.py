@@ -87,7 +87,7 @@ class QQ:
 
     def smile(self):
         state=self.native_controls().read('panel')
-        self.report['toolbar']={k:state.get(k) for k in ('toolbar_ready','toolbar_rect','panel_open')}
+        self.report['toolbar']={k:state.get(k) for k in ('backend','toolbar_ready','toolbar_rect','panel_open')}
         if not state.get('toolbar_ready'):raise StopAutomation('qq_chat_not_open')
         return self.native_hit(state['toolbar_rect'])
 
@@ -111,7 +111,7 @@ class QQ:
         # The personal-favorites grid proves the selected tab. A decorative
         # heart's offset/colour does not. Query only panel geometry (no scan).
         state=self.native_controls().read()
-        self.report['favorite_panel']={k:state.get(k) for k in ('favorites_open','panel_rect','grid_rect','import_rect','import_ready','favorite_tab_rect')}
+        self.report['favorite_panel']={k:state.get(k) for k in ('backend','favorites_open','panel_rect','grid_rect','import_rect','import_ready','favorite_tab_rect')}
         trace=self.report.setdefault('panel_observations',[])
         observation={**self.report['favorite_panel'],'seconds':round(time.monotonic(),3)}
         if not trace or any(trace[-1].get(k)!=observation.get(k) for k in self.report['favorite_panel']):
@@ -141,7 +141,7 @@ class QQ:
             if getattr(self,'cancel',None) and Path(self.cancel).exists():raise StopAutomation('cancel_requested')
             try:return self.panel()
             except StopAutomation as err:
-                if str(err) not in ('plus_not_uniquely_identified','qq_uia_top_not_observed','qq_uia_personal_favorites_not_open','favorite_panel_geometry_changed') or time.monotonic()>=deadline:raise
+                if str(err) not in ('plus_not_uniquely_identified','qq_uia_top_not_observed','qq_uia_personal_favorites_not_open','favorite_panel_geometry_changed','qq_visual_chat_toolbar_not_unique') or time.monotonic()>=deadline:raise
                 # Import progress can temporarily change the panel geometry.
                 # Observe only; toggling here closes a panel that is still open.
                 time.sleep(.15)
@@ -158,7 +158,7 @@ class QQ:
         controls=self.native_controls();state=controls.open()
         self.report['favorite_navigation_before']={k:state.get(k) for k in ('at_top','import_ready','import_rect','grid_rect','loaded_cells')}
         state=controls.top(state)
-        self.report['favorite_navigation']={'method':'native_personal_favorites',
+        self.report['favorite_navigation']={'method':'visual_personal_favorites' if state.get('backend')=='visual' else 'native_personal_favorites',
             'actions':list(controls.actions),'favorites_open':True,'at_top':state.get('at_top'),
             'sticker_invocations':0}
         # Fresh native membership and geometry still gate the file picker.
