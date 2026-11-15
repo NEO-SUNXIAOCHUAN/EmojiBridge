@@ -53,18 +53,20 @@
 
 ## 下载与开始使用
 
-**S0168 R2 · 下载完整 ZIP → 全部解压 → 双击 EB/EmojiBridge.exe。** 普通用户无需编译源码。
+**S0174 · 下载 ZIP → 全部解压 → 双击 EB/EmojiBridge.exe。无需安装 Python。**
 
 | 下载项 | 怎么选 |
 | --- | --- |
-| [完整 ZIP · 1.35 GB（推荐）](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/releases/download/S0168R2/EmojiBridge-S0168-download-ready-trial-full.zip) | 新用户及旧正式版用户使用，三种抠图模型与默认本地功能已随包 |
-| [同版 7z · 1.19 GB](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/releases/download/S0168R2/EmojiBridge-S0168R2-full-lossless.7z) | 与 ZIP 内容相同；使用支持 7z 的解压工具 |
+| [轻量版 ZIP · 523.25 MB（推荐）](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/releases/download/S0174/EmojiBridge-S0174-Windows-x64-lite.zip) | 自带默认自动抠图、基础编辑、视频/GIF、拖出与互通组件；更多模型和模板在设置中选装 |
+| [完整离线版 ZIP · 1.35 GB](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/releases/download/S0174/EmojiBridge-S0174-Windows-x64-full.zip) | 另含动漫/精细抠图、tiny 字幕及模板扩展 |
 | [宣传片同款表情包 · 707 MB](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/releases/download/S0163/EmojiBridge-promo-assets-20261114.zip) | 独立可选，解压后多选导入 |
-| [对应公开源码](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/releases/download/S0168R2/EmojiBridge-S0168R2-public-source.zip) · [SHA256 校验](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/releases/download/S0168R2/SHA256SUMS-release-S0168R2.txt) | 开发者或需要核验下载内容的用户 |
+| [对应公开源码](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/releases/download/S0174/EmojiBridge-S0174-public-source.zip) · [SHA256 校验](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/releases/download/S0174/SHA256SUMS.txt) | 开发者或需要核验下载内容的用户 |
 
-本次修复部分电脑下载后 DLL 加载失败的问题。完整包包含模板、识字与跟随、视频处理和默认 tiny 字幕模型，无需首次下载这些默认组件；更大的字幕模型仍可选。缺少系统 WebView2 时，按启动提示安装微软官方组件。
+两版均包含默认 **自动／U²-Net** 模型，默认抠主体无需下载。轻量版可通过“设置 → 可选组件”下载并导入动漫/精细抠图、字幕或模板组件。缺少系统 WebView2 时，按启动提示安装微软官方组件。
 
-保存作品并退出旧版，解压到新文件夹启动；无需删除个人素材库。S0167 专用补丁的适用范围见 [下载说明](https://neo-sunxiaochuan.github.io/EmojiBridge/docs/DOWNLOADS.html)。
+**已整合 S0169—S0173 累计补丁和本次 QQ 路径、重新检测、窗口贴边处理修复，并保留 DLL 启动修复。** 保存作品并退出旧版，解压到新目录启动；保留个人素材和旧目录，不叠加旧补丁。自定义数据目录沿用原参数。故障外机仍需复测，不保证所有环境问题均已解决。
+
+[安装、选装组件与完整升级说明](https://neo-sunxiaochuan.github.io/EmojiBridge/docs/DOWNLOADS.html)
 
 <details>
 <summary>第一次使用，从哪里开始？</summary>
