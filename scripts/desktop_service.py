@@ -425,6 +425,40 @@ class DesktopService:
             return {'text':'组件已准备好，可以继续创作。'}
         return self.start(work,'正在准备本地组件…')
 
+    def component_status(self):
+        from emoji_bridge.release_components import status
+        return status()
+
+    def component_needed(self,message):
+        if str(message).startswith('需要安装“'):
+            self.route_serial+=1;self.route_event={'serial':self.route_serial,'page':'settings'}
+
+    def component_download(self,ident):
+        from emoji_bridge.release_components import catalog
+        import webbrowser
+        data=catalog();spec=data['components'][ident]
+        if not spec['url'].startswith('https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/releases/download/'):
+            raise ValueError('组件下载地址未配置')
+        webbrowser.open(spec['url']);return True
+
+    def component_import(self,ident):
+        import webview
+        from emoji_bridge.release_components import install,catalog
+        if self.task.get('active'):return {'accepted':False,'message':'请等待当前任务完成'}
+        if ident not in catalog()['components']:raise ValueError('未知组件')
+        files=self.window.create_file_dialog(webview.FileDialog.OPEN,allow_multiple=False,file_types=('EmojiBridge 组件包 (*.zip)',))
+        if not files:return None
+        return self.start(lambda:install(files[0],ident,cancel=self.cancel,
+            progress=lambda label,done,total:self.task.update(text=label,completed=done,total=total)),'正在校验组件包…')
+
+    def component_verify(self):
+        from emoji_bridge.release_components import status
+        def work():
+            rows=status(verify=True,cancel=self.cancel)
+            bad=[r['title'] for r in rows if r['state']=='corrupt']
+            return {'text':'组件校验完成'+('；文件损坏：'+'、'.join(bad) if bad else '，已安装组件完整'),'failed':bool(bad)}
+        return self.start(work,'正在校验已安装组件…')
+
     def listing(self,view='',collection='',media='',offset=0):
         rows,total=self.store.search(category=collection,view=view,media=media,offset=max(0,int(offset)),limit=48)
         items=[]
@@ -452,7 +486,8 @@ class DesktopService:
                 result=work();self.task.update(result or {})
                 self.task['state']='cancelled' if self.cancel.is_set() else 'error' if self.task.get('failed') or self.task.get('errors') else 'success'
             except (CancelledError,InterruptedError):self.task.update(text='已取消，先前完成的文件保留。',state='cancelled')
-            except Exception as exc:self.task.update(text=str(exc),failed=True,state='error')
+            except Exception as exc:
+                self.task.update(text=str(exc),failed=True,state='error');self.component_needed(str(exc))
             finally:self.task['active']=False;self.task['elapsed']=time.monotonic()-self.task['started']
         self.thread=threading.Thread(target=run,daemon=True,name='material-io');self.thread.start();return {'accepted':True}
 

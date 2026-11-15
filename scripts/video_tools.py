@@ -442,7 +442,10 @@ class VideoWindow:
                 if event[0]=='progress':self.status.set(event[1]);self.bar['value']=event[2];continue
                 self.busy=False;self.update_source_state();self.progress_row.pack_forget()
                 self.card.draw()
-                if event[0]=='error':self.status.set('未完成：'+event[1]+'；原文件保留，可重试。');self.card.configure(text='已取消' if self.cancel.is_set() else '点此重试');continue
+                if event[0]=='error':
+                    self.status.set('未完成：'+event[1]+'；原文件保留，可重试。');self.card.configure(text='已取消' if self.cancel.is_set() else '点此重试')
+                    from component_settings import show_if_missing
+                    show_if_missing(self.window,event[1]);continue
                 value=event[1];self.bar['value']=100
                 if 'transcript' in value:self.speech.loaded(value)
                 if 'source' in value:

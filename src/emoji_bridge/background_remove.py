@@ -129,7 +129,9 @@ def model_url(name):
     return 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/'+MODELS[name]['file']
 
 def model_present(name):
-    return any((folder/f'{name}.onnx').is_file() for folder in (cache_root()/'models',bundled_models()))
+    from .release_components import resolve
+    extra=resolve('anime' if name=='isnet-anime' else 'fine',f'runtime/cutout-models/{name}.onnx') if name!=MODEL else None
+    return bool(extra and extra.is_file()) or any((folder/f'{name}.onnx').is_file() for folder in (cache_root()/'models',bundled_models()))
 
 
 def import_model(source,root=None,*,name=MODEL,cancel=None,progress=None):
@@ -173,10 +175,17 @@ def ensure_model(root, cancel=None, progress=None, name=MODEL):
         check_cancel(cancel);root.mkdir(parents=True,exist_ok=True)
         if model.exists() and model_digest(model)==spec['md5']:return model
         offline=bundled_models()/f'{name}.onnx'
+        from .release_components import resolve,require,catalog
+        if name!=MODEL and not offline.is_file():
+            component='anime' if name=='isnet-anime' else 'fine'
+            offline=resolve(component,f'runtime/cutout-models/{name}.onnx') or offline
         if offline.is_file():
             if model_digest(offline)!=spec['md5']:raise RuntimeError('随包模型校验失败，请重新解压完整包或导入完整模型文件')
             check_cancel(cancel)
             return offline
+        if catalog():
+            if name!=MODEL:require(component)
+            raise RuntimeError('默认抠图模型缺失，请重新完整解压轻量版或完整版；无需另外下载模型')
         notify(progress,'首次下载 '+spec['label']+' 模型；仅下载到本机')
         request=urllib.request.Request('https://github.com/danielgatis/rembg/releases/download/v0.0.0/'+spec['file'],headers={'User-Agent':'EmojiBridge-local-cutout'})
         for attempt in range(2):

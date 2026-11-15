@@ -90,7 +90,8 @@ class Factory:
                     suffix={'PNG':'.png','GIF':'.gif','WEBP':'.webp','JPEG':'.jpg'}[metadata['format']];final=output.with_suffix(suffix);output.replace(final)
                     row.update(state='ready',file=str(final),metadata=metadata,source_ids=parents)
                 except InterruptedError:row['state']='cancelled'
-                except Exception as exc:row.update(state='failed',error=str(exc))
+                except Exception as exc:
+                    row.update(state='failed',error=str(exc));getattr(service,'component_needed',lambda message:None)(str(exc))
                 completed+=1;persist()
             persist();return {'text':f"生成完成：{sum(r['state']=='ready' for r in job['items'])}/{total}；选择结果加入素材库或继续编辑。",'factory_job':job['id'],'failed':any(r['state']=='failed' for r in job['items'])}
         persist();return self.service.start(run,'准备表情工厂')

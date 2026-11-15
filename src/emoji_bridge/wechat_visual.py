@@ -201,6 +201,47 @@ def folder_candidates(image, toolbar, scale, cv2):
     return found
 
 
+def composer_borders(edges, header, scale):
+    """Recover four observed edges when a message touches the outer contour.
+
+    Never invent a composer from window ratios. Both vertical sides and the
+    bottom must be continuous; a bounded interruption of the top is permitted.
+    Independent candidates stay ambiguous, even if one would be convenient.
+    """
+    height,width=edges.shape
+    def groups(indices):
+        parts=np.split(indices,np.flatnonzero(np.diff(indices)>max(2,round(3*scale)))+1)
+        return [int(round(float(np.median(p)))) for p in parts if len(p)]
+    def horizontal(y,left,right):
+        region=edges[max(0,y-2):min(height,y+3),left:right]
+        return float((region>0).any(axis=0).mean()) if region.size else 0.
+    left_min=max(0,round(header[0]-24*scale));left_max=round(header[0]+24*scale)
+    right_min=max(left_max,round(width-45*scale));right_max=width-round(3*scale)
+    inner_left=left_max+round(12*scale);inner_right=right_min-round(12*scale)
+    if inner_right<=inner_left:return []
+    ys=np.flatnonzero((edges[:,inner_left:inner_right]>0).mean(axis=1)>.65)
+    levels=groups(ys)
+    bottoms=[y for y in levels if height-45*scale<y<height-3*scale]
+    found=[]
+    for bottom in bottoms:
+        for top in levels:
+            if not header[3]+70*scale<top<bottom-80*scale:continue
+            a=top+round(12*scale);b=bottom-round(12*scale)
+            support=(edges[a:b]>0).mean(axis=0)
+            lefts=groups(np.flatnonzero(support[left_min:left_max]>.80)+left_min)
+            rights=groups(np.flatnonzero(support[right_min:right_max]>.80)+right_min)
+            for left in lefts:
+                for right in rights:
+                    if right-left<=width*.40:continue
+                    inset=round(12*scale)
+                    if (horizontal(top,left+inset,right-inset)<.70 or
+                            horizontal(bottom,left+inset,right-inset)<.95):continue
+                    rect=(left,top,right+1,bottom+1)
+                    if not any(max(abs(v-u) for v,u in zip(rect,old))<5*scale for old in found):
+                        found.append(rect)
+    return found
+
+
 @dataclass(frozen=True)
 class Layout:
     header: tuple
@@ -298,6 +339,8 @@ def analyze(image, result, dpi, cv2, require_selected=True):
             rect = (x, y, x+w, y+h)
             if not any(max(abs(v-u) for v, u in zip(rect, old)) < 5*scale for old in boxes):
                 boxes.append(rect)
+    if not boxes:
+        boxes = composer_borders(edges, header, scale)
     if len(boxes) != 1:
         raise StopAutomation('wechat_visual_composer_unproven')
     composer = boxes[0]

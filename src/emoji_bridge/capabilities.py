@@ -40,6 +40,10 @@ def dependencies(name):
     if override:return Path(override)
     bundled=APP/'runtime'/name
     if name in ('meme','vision','speech') and bundled.is_dir():return bundled
+    if name in ('meme','speech'):
+        from .release_components import resolve
+        installed=resolve('templates' if name=='meme' else 'speech','runtime/'+name)
+        if installed and installed.is_dir():return installed
     target=root()/name/'packages'
     # Reuse the already prepared standalone runtimes used by earlier pilots.
     # New installations still use one predictable directory per capability.
@@ -54,11 +58,14 @@ def models(name):
 def ensure(name,cancel=None,progress=None):
     check_cancel(cancel)
     target=dependencies(name)
+    from .release_components import catalog,require
+    release=catalog()
+    if release and name in ('meme','speech') and not target.is_dir():require('templates' if name=='meme' else 'speech')
     if name=='meme' and not os.environ.get('EMOJI_BRIDGE_MEME_DEPENDENCIES') and not (APP/'runtime/meme').is_dir():
         from .offline_components import specification,install
         spec=specification(APP,name)
         if spec:return install(APP,root(),name,spec,cancel,progress)
-    if name in ('meme','vision','speech') and target==APP/'runtime'/name:
+    if name in ('meme','vision','speech') and (target==APP/'runtime'/name or release and (target/'ready.json').is_file()):
         ready=target/'ready.json'
         complete=(ready.is_file() and json.loads(ready.read_text('utf-8')).get('packages')==list(PACKAGES[name])
                 and (target/({'meme':'meme_generator','vision':'rapidocr','speech':'faster_whisper'}[name]+'/__init__.py')).is_file())

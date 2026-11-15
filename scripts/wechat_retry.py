@@ -80,6 +80,15 @@ def confirmation_candidates(plan,root=DATA_ROOT):
     proof does not itself authorize Send: the live composer is checked again.
     """
     items=candidates(plan,root)
+    # Let never-submitted items proceed first, without asking the user to
+    # approve resending old items. Those records remain pending and intact.
+    if any(j.get('submission_state')=='not_started' and j.get('status') in ('queued','paused_before_submit')
+           and not j.get('preparation_error') and not j.get('staged_recovery_requires_confirmation')
+           for j in plan.get('jobs',[])):
+        return []
+    missing={j.get('item_id') for j in plan.get('jobs',[])
+             if j.get('staged_recovery_requires_confirmation') is True}
+    if any(item['item_id'] in missing for item in items):return items
     assets=[item['evidence']['asset'] for item in items]
     return [] if assets and staged_evidence(assets,root) else items
 

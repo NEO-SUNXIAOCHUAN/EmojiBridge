@@ -30,6 +30,8 @@ class ScribbleTools:
         ttk.Label(body,text='效果不理想可换模型，再点击处理。',wraplength=230,foreground=MUTED).pack(fill='x',pady=(0,8))
         offline=disclosure(body,'模型文件')
         self.model_status=ttk.Label(body,wraplength=230,foreground=MUTED);self.model_status.pack(fill='x')
+        from component_settings import show as show_components
+        ttk.Button(offline,text='可选组件：下载 / 导入',command=lambda:show_components(e.window)).pack(fill='x',pady=4)
         ttk.Button(offline,text='下载所选模型（浏览器）',command=self.download_model).pack(fill='x',pady=4)
         ttk.Label(offline,text='下载完成后点下方导入，选择 ONNX 文件或配套 ZIP 即可，无需找安装目录。',wraplength=230,foreground=MUTED).pack(fill='x')
         ttk.Button(offline,text='导入所选模型…',command=self.import_model).pack(fill='x',pady=4)

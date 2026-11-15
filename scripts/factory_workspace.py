@@ -645,7 +645,10 @@ class FactoryWorkspace:
             error=self.factory.live.outputs.get(key,{}).get('error') or self.jobs.errors.get(key)
             if self.images.get(key) is not None or error:
                 self.progress.finish(error=ValueError(error) if error else None);self.example_wait=None
-                if error:self.message.set('当前模板示例未就绪，可重新选择重试；作品保持不变。')
+                if error:
+                    self.message.set(str(error)+'；作品保持不变。')
+                    from component_settings import show_if_missing
+                    show_if_missing(self.e.window,error)
             elif time.monotonic()-started>.15 and not self.progress.activity.get('active'):
                 self.progress.begin('准备当前模板示例')
         if not visible:self.stop_hover()

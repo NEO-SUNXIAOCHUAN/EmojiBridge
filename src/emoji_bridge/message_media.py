@@ -128,13 +128,42 @@ def prepare_rows(frame,rows,scale=1):
             for crop in [frame.crop(rect)]]
 
 
+def viewport_media_rects(crop,components,matcher,scale):
+    """Propose intact media next to visible outgoing avatars, never cropped ink.
+
+    A visual viewport has many rows: its height is not a message's height.
+    Source size and the client's bounded preview cap propose sizes only. Every
+    proposal still needs the normal full-frame pixel proof before any click.
+    """
+    px=lambda value:round(value*scale)
+    avatars=[b for b in components if px(30)<=b[2]-b[0]<=px(42)
+             and abs((b[2]-b[0])-(b[3]-b[1]))<=px(2)
+             and b[0]>crop.width-px(90)]
+    source_width,source_height=matcher.native_size
+    sizes={(source_width,source_height)}
+    # Inline GIF/sticker and ordinary-image surfaces have different caps.
+    # Small sources are not enlarged. These are proposals, never acceptance.
+    for cap in (132,200):
+        factor=min(1.,px(cap)/max(source_width,source_height))
+        sizes.add((round(source_width*factor),round(source_height*factor)))
+    for avatar in avatars:
+        for width,height in sorted(sizes):
+            if not (px(24)<=width<=px(240) and px(24)<=height<=px(240)):continue
+            x=avatar[0]-px(14)-width;y=avatar[1]
+            if 0<=x<x+width<=crop.width and 0<=y<y+height<=crop.height:
+                yield x,y,x+width,y+height
+
+
 def match_rows(frame,rows,refs,matcher,fallback=False,prepared_rows=None,scale=1):
     hits=[];ratio=refs[0].width/refs[0].height
     for ident,rect,crop,components in (prepared_rows if prepared_rows is not None else prepare_rows(frame,rows,scale)):
         found=[]
         for x,y,right,bottom in components:
             width,height=right-x,bottom-y
-            if abs(width/height-ratio)>max(.025,2/height):continue
+            # Qt rounds the two displayed axes independently. Comparing only
+            # width/height with 2/height wrongly rejects wide intact images.
+            if (abs(width/height-ratio)>.025 and
+                    min(abs(width-round(height*ratio)),abs(height-round(width/ratio)))>2):continue
             index,error=matcher(crop.crop((x,y,right,bottom)))
             if index is not None and error<.04:found.append(Match(x,y,width,height,error))
         if not found and isinstance(matcher,WeChatFrameMatcher) and matcher.native_path:
@@ -145,7 +174,8 @@ def match_rows(frame,rows,refs,matcher,fallback=False,prepared_rows=None,scale=1
             # UIA rows and captures are physical pixels. Scale the native
             # layout proposals together; never change the full-pixel gate.
             px=lambda value:round(value*scale)
-            avatars=[b for b in components if px(30)<=b[2]-b[0]<=px(42)
+            visual=bool(ident and ident[0]=='visual_viewport')
+            avatars=[] if visual else [b for b in components if px(30)<=b[2]-b[0]<=px(42)
                      and abs((b[2]-b[0])-(b[3]-b[1]))<=px(2)
                      and b[0]>crop.width-px(90) and b[1]<=px(12)]
             native_ratio=matcher.native_size[0]/matcher.native_size[1]
@@ -158,6 +188,11 @@ def match_rows(frame,rows,refs,matcher,fallback=False,prepared_rows=None,scale=1
                     if index is not None and error<.04:found.append(Match(x,y,width,height,error))
                 if found:break
             if found:found=[min(found,key=lambda h:h.error)]
+            if not found and visual:
+                for x,y,right,bottom in viewport_media_rects(crop,components,matcher,scale):
+                    index,error=matcher(crop.crop((x,y,right,bottom)))
+                    if index is not None and error<.04:
+                        found.append(Match(x,y,right-x,bottom-y,error))
         if fallback and not found and getattr(matcher,'batch_geometry_only',False) is not True:
             found=find_media(crop,refs,tuple(e for e in (200,180,160,144,140,136,132,128,120,100,80,72) if e<=max(crop.size)))
         for h in found:

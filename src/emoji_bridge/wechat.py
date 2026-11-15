@@ -182,14 +182,25 @@ class WeChat:
                 return result
             except StopAutomation as exc:
                 failure=self.report.get('last_uia_failure',{})
+                if waits>0 and self.visual_trial and empty_provider_failure(str(exc),self.report):
+                    # One snapshot AFTER the standard request has now proved
+                    # the required role is still absent. Re-polling the same
+                    # empty shell for three seconds cannot improve this proof.
+                    self.report['startup_control_observations']=waits+1
+                    raise StopAutomation('wechat_visual_empty_provider') from exc
                 if (str(exc)!='wechat_control_missing' or failure.get('matches')!=0
                         or failure.get('control') not in {'header','composer','messages','sessions'}
-                        or time.monotonic()>=deadline):
+                        or (waits>0 and time.monotonic()>=deadline)):
                     if self.visual_trial and empty_provider_failure(str(exc),self.report):
                         raise StopAutomation('wechat_visual_empty_provider') from exc
                     raise
                 self.check_cancel()
                 if waits==0:
+                    # Cold UIA startup may itself exceed the observation budget.
+                    # It must not skip the one read-only recovery probe: without
+                    # that evidence an empty provider can never reach fallback.
+                    # This is still bounded by the helper's request timeout and
+                    # the fresh observation interval below; no input is replayed.
                     state=self.uia('prepare-accessibility')
                     self.report['startup_accessibility']={k:state.get(k) for k in ('requested','nodes_before','hresult','read_only')}
                     # The bounded helper can consume the initial observation
@@ -239,6 +250,18 @@ class WeChat:
         return self.native_uia(action,window)
 
     def native_uia(self,action='snapshot',window=None):
+        started=time.perf_counter();ok=False
+        try:
+            result=self._native_uia(action,window);ok=True
+            return result
+        finally:
+            # Operation names/counts only: no window titles or message content.
+            counts=self.report.setdefault('native_control_timings',{})
+            row=counts.setdefault(action,{'calls':0,'seconds':0.0,'errors':0})
+            row['calls']+=1;row['errors']+=not ok
+            row['seconds']=round(row['seconds']+time.perf_counter()-started,4)
+
+    def _native_uia(self,action='snapshot',window=None):
         self.check_cancel()
         window=window or self.window
         guard(window,self.exe,owner=self.window if action in ('menu','menu-observe','own-search-target','import-status') else None)

@@ -406,7 +406,16 @@ def execute(assets,cancel=None,resume_sent=False,progress=None,retry_approvals=N
                 manifest['groups'][n].update(state='running',evidence=str(group_folder))
                 save_json(folder/'groups.json',manifest);notify('sending_group')
                 if resume_staged:
-                    snap=q.uia();rect,hits=staged_identity(q,current,snap)
+                    snap=q.uia()
+                    if snap.get('input_empty') is True:
+                        # History proves we did not click Send, not that the
+                        # user never sent/removed the draft since then. Keep
+                        # the original ledger, but expose the explicit recovery
+                        # choice instead of retrying a nonexistent draft forever.
+                        for runner in current:
+                            runner.report['staged_recovery_requires_confirmation']=True
+                        raise StopAutomation('staged_draft_missing_requires_confirmation')
+                    rect,hits=staged_identity(q,current,snap)
                     save_json(group_folder/'staged-recovery.json',{'verified_count':len(hits),'picker_calls':0,'source':'known_unsent_batch'})
                     send_staged_batch(current,q,rect,hits,notify if progress else None)
                 elif not resume_sent:

@@ -13,6 +13,8 @@ class SpeechPanel:
   ttk.Button(row,text='本地转写',command=self.transcribe).pack(side='left');ttk.Button(row,text='收起',command=self.toggle).pack(side='right')
   tools=ttk.Frame(self.panel);tools.pack(fill='x',pady=4)
   ttk.Button(tools,text='下载并安装所选模型',command=self.prepare_model).pack(side='left')
+  from component_settings import show as show_components
+  ttk.Button(tools,text='字幕组件：下载 / 导入',command=lambda:show_components(video.window)).pack(side='left',padx=4)
   ttk.Button(tools,text='官方下载页',command=self.download_page).pack(side='left',padx=4)
   self.query=tk.StringVar();ttk.Entry(self.panel,textvariable=self.query).pack(fill='x',pady=6);self.query.trace_add('write',lambda *_:self.refresh())
   self.list=tk.Listbox(self.panel,height=5,exportselection=False);self.list.pack(fill='x');self.list.bind('<<ListboxSelect>>',self.select)

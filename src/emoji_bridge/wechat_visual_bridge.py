@@ -51,14 +51,17 @@ def media_proof(image, layout, runners, scale):
         pad = max(2, round(2*scale))
         mask[max(0, hit.y-pad):hit.y+hit.height+pad,
              max(0, hit.x-pad):hit.x+hit.width+pad] = False
-    # Qt's insertion caret beside an image is as tall as that image. Only
-    # that narrow green stroke may remain outside the full-frame rectangles.
+    # Qt's caret follows the tallest object on the current line, even when
+    # the LAST object is shorter. Require the last proven object's baseline
+    # and right edge; never treat arbitrary green content as a caret.
     caret = green(np.asarray(crop)) & mask
     ys, xs = np.nonzero(caret)
     if len(xs) and xs.max()-xs.min() <= max(2, round(2*scale)):
-        for hit in hits:
+        for hit in sorted(hits,key=lambda h:h.x+h.width,reverse=True)[:1]:
+            row=[h for h in hits if abs(h.y+h.height-hit.y-hit.height)<=6*scale]
+            top=min(h.y for h in row)
             if (hit.x+hit.width <= xs.min() <= hit.x+hit.width+6*scale and
-                hit.y-6*scale <= ys.min() and ys.max() <= hit.y+hit.height+6*scale):
+                top-6*scale <= ys.min() and ys.max() <= hit.y+hit.height+6*scale):
                 mask[caret] = False
                 break
     if not hits or mask.any():
@@ -82,20 +85,43 @@ class VisualBridge:
         client.report['visual_compatibility'] = self.stats
 
     def read_ocr(self, image):
+        self.q.check_cancel()
+        key=(image.mode,image.size,image.tobytes()) if image.width*image.height<=65536 else None
+        cache=getattr(self,'ocr_cache',None)
+        if cache is None:self.ocr_cache=cache={}
+        if key is not None and key in cache:
+            self.stats['ocr_cache_hits']=self.stats.get('ocr_cache_hits',0)+1
+            return cache[key]
         started = time.perf_counter()
         result = self.ocr.read(image)
         self.stats['ocr_calls'] += 1
         self.stats['ocr_seconds'] += round(time.perf_counter()-started, 4)
+        self.q.check_cancel()
+        if key is not None:
+            if len(cache)>=16:cache.pop(next(iter(cache)))
+            cache[key]=result
         return result
 
     def label_read(self, image):
         self.q.check_cancel()
+        # Cache exact freshly captured pixels, never a position or old window.
+        # Repeated menus/send labels across a batch are identical even though
+        # their HWND and screen coordinates change. Bounded to small crops.
+        key=(image.mode,image.size,image.tobytes()) if image.width*image.height<=32768 else None
+        cache=getattr(self,'label_cache',None)
+        if cache is None:self.label_cache=cache={}
+        if key is not None and key in cache:
+            self.stats['label_cache_hits']=self.stats.get('label_cache_hits',0)+1
+            return cache[key]
         started=time.perf_counter()
         if self.label_recognizer is None:self.label_recognizer=LabelRecognizer()
         text,score=self.label_recognizer.read(image)
         self.q.check_cancel()
         self.stats['label_reads']=self.stats.get('label_reads',0)+1
         self.stats['label_seconds']=self.stats.get('label_seconds',0)+round(time.perf_counter()-started,4)
+        if key is not None:
+            if len(cache)>=64:cache.pop(next(iter(cache)))
+            cache[key]=(text,score)
         return text, score
 
     def label_matches(self, image, expected):
@@ -233,15 +259,17 @@ class VisualBridge:
         from . import windows as win
         q=self.q;old=q.window;scale=old.dpi/96
         width=old.rect[2]-old.rect[0];height=old.rect[3]-old.rect[1]
-        if width>=700*scale and height>=500*scale:return
+        area=win.monitor_work_area(old.hwnd)
+        desired=win.visual_window_rect(old.rect,area,old.dpi)
+        if desired==old.rect:return
         q.check_cancel();win.guard(old,q.exe)
         if any(win.user.GetAsyncKeyState(k)&0x8000 for k in (1,2,16,17,18,91,92)):
             raise StopAutomation('user_input_in_progress')
-        area=win.monitor_work_area(old.hwnd)
-        w=min(max(width,round(760*scale)),area[2]-area[0])
-        h=min(max(height,round(550*scale)),area[3]-area[1])
-        if w<700*scale or h<500*scale:raise StopAutomation('display_too_small_for_calibrated_window')
-        desired=win.fitted_window_rect((old.rect[0],old.rect[1],old.rect[0]+w,old.rect[1]+h),area)
+        w=desired[2]-desired[0];h=desired[3]-desired[1]
+        if win.user.IsZoomed(old.hwnd):
+            # Restore only at bind, before any input or submission.
+            win.user.ShowWindowAsync(old.hwnd,9)
+            time.sleep(.15);q.check_cancel()
         if not win.user.SetWindowPos(old.hwnd,0,desired[0],desired[1],w,h,0x14):
             raise StopAutomation('calibrated_window_resize_failed')
         time.sleep(.2);q.check_cancel()
@@ -249,7 +277,7 @@ class VisualBridge:
         win.guard(new,q.exe)
         if new.rect!=desired or new.dpi!=old.dpi:raise StopAutomation('calibrated_window_resize_failed')
         q.window=new
-        self.stats['window_adjustment']={'before':old.rect,'after':new.rect,'reason':'keep_helper_witness_visible'}
+        self.stats['window_adjustment']={'before':old.rect,'after':new.rect,'reason':'keep_complete_visual_surface_visible'}
 
     def search_helper(self, image):
         """One empty visual search; select only the built-in helper function."""
@@ -338,6 +366,18 @@ class VisualBridge:
             'words': [{'text': '文件传输助手', 'rect': list(layout.header)}]}]}
 
     def observe(self):
+        # A send can resize the composer while Qt is repainting its border.
+        # Only re-observe; no cached coordinates, extra clicks or sends.
+        for attempt in range(3):
+            self.q.check_cancel()
+            try:return self.observe_once()
+            except StopAutomation as exc:
+                if str(exc)!='wechat_visual_composer_unproven':raise
+                self.stats['layout_rechecks']=self.stats.get('layout_rechecks',0)+1
+                if attempt==2:raise
+                time.sleep(.08)
+
+    def observe_once(self):
         image = self.q.frame()
         if self.header_pixels is None:
             raise StopAutomation('wechat_visual_helper_not_confirmed')

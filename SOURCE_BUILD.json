@@ -1,5 +1,5 @@
 {
-  "source_commit": "309f2c1d68254d40005b87484f069a1892ef5f01",
+  "source_commit": "a9bf49ba441a8f720da2881e27f40c99dd81d5a1",
   "history_included": false,
   "publication_ready": false,
   "rights_review": "RELEASE_RIGHTS.md",
@@ -51,8 +51,8 @@
     },
     {
       "path": "assets/desktop/main.js",
-      "sha256": "aa78277f4d6f73d1edac4268b997a5b8b9083387b9d7a3f40cebf3e7ef351e72",
-      "bytes": 723127
+      "sha256": "4635cb89dc296bfc2725cb6c1b64d47797128c1f734df5da02482485c701d160",
+      "bytes": 725034
     },
     {
       "path": "assets/desktop/pocket.css",
@@ -4616,8 +4616,8 @@
     },
     {
       "path": "BUILDING.md",
-      "sha256": "12d14b24097e4a667d355de92bdc1a9104d7adc2cac1f331c2ed1984d9dfb63b",
-      "bytes": 3107
+      "sha256": "a7adba56524faf12447316cdd009187b68e1b83ae0785f2b73d25559be443b36",
+      "bytes": 4374
     },
     {
       "path": "COPYRIGHT.md",
@@ -4841,8 +4841,8 @@
     },
     {
       "path": "desktop-ui/src/workspaces.jsx",
-      "sha256": "5a2fe356f52519a685f3834a14915d01999150eccae8617c2df7662c6e9b92f4",
-      "bytes": 13225
+      "sha256": "2106251ea87f33c74bb1e316b6860666ba526bb7a4161c4269f9844b7c382c95",
+      "bytes": 14586
     },
     {
       "path": "desktop-ui/src/xp-v9/INTEGRATION.md",
@@ -4911,13 +4911,18 @@
     },
     {
       "path": "README.md",
-      "sha256": "ce30ceb8792929be09eb166ce1e99b337b9224c7ea3c40ba38cd68b42b26645b",
-      "bytes": 3472
+      "sha256": "9ee6fcd7200ced62988f47142de38de39db8fec8c69dbaa6d009270694f69fb8",
+      "bytes": 4038
+    },
+    {
+      "path": "RELEASE_COMPONENTS.json",
+      "sha256": "4287d5529a5ab088973784d0d9bd1cb6f36ff76785b28c17c3e47e29c75b30e6",
+      "bytes": 1948476
     },
     {
       "path": "RELEASE_NOTES.md",
-      "sha256": "89da53fad12fd787f72804e148a82559593142a4ae53ab2b45fff21bd330d2bb",
-      "bytes": 9095
+      "sha256": "571808afa20df8a87b10a7e7740d8335001e2738702025f7fb4128a5852dd175",
+      "bytes": 10190
     },
     {
       "path": "RELEASE_RIGHTS.md",
@@ -4951,8 +4956,8 @@
     },
     {
       "path": "scripts/bridge_ui.py",
-      "sha256": "61be0a0d62c6ebe1c309053daab72b84169f3a0e781d08040eea60f2776a6886",
-      "bytes": 79036
+      "sha256": "a1e36f9810543260fff8102d10113d9baf82945db743fbb7ded55efb68b19ff5",
+      "bytes": 79238
     },
     {
       "path": "scripts/build_pilot.py",
@@ -5005,14 +5010,19 @@
       "bytes": 4074
     },
     {
+      "path": "scripts/component_settings.py",
+      "sha256": "e215fe3acc450aa4b5dc302a3c452d72285981b5dd20f47865bbea5ee3efa80a",
+      "bytes": 3180
+    },
+    {
       "path": "scripts/cutout_tools.py",
       "sha256": "c918b11b6160ca39aa1cb913e59c80a4dbce648048699033253b1e7f5379f461",
       "bytes": 282
     },
     {
       "path": "scripts/desktop_modern.py",
-      "sha256": "59b798e7623a2c2bbecc985d4712fe9de415f20fa546f9c5f25025420a45cc66",
-      "bytes": 9644
+      "sha256": "4ba5cc7ba21321478cc0b021fd5fc762c2a7ce44f33633e9c9710cb25c81e1d1",
+      "bytes": 9722
     },
     {
       "path": "scripts/desktop_native.py",
@@ -5026,8 +5036,8 @@
     },
     {
       "path": "scripts/desktop_service.py",
-      "sha256": "41a989a5f7c50e8c4e6f8c0a03148c95429270276b8c3fcb9f55cb027ad7b70d",
-      "bytes": 63923
+      "sha256": "4453d2a077f522faf0b7b678d18a9c62b87b9b7f49e95f8717ad66dba01d7632",
+      "bytes": 65850
     },
     {
       "path": "scripts/desktop_shell.py",
@@ -5116,8 +5126,8 @@
     },
     {
       "path": "scripts/export_public_source.py",
-      "sha256": "8990eeae93c18207840cb6b5fa6c2f8f9fa0911bb54c7b3882403adf606ad989",
-      "bytes": 4274
+      "sha256": "5a8aec36379a0393b685716f4a0b26a0a0527fb6507201e2a6a694f8d1d40837",
+      "bytes": 4330
     },
     {
       "path": "scripts/factory_animation_input.py",
@@ -5141,13 +5151,13 @@
     },
     {
       "path": "scripts/factory_service.py",
-      "sha256": "df8296c952cbaea9a2c47e397d39cdbc39aa0501169f890aa08d8865226421ec",
-      "bytes": 8811
+      "sha256": "efac478ad09dff36a3bad91a6e3f9f07869120a8c7dae2cb76c5511afb4075a4",
+      "bytes": 8899
     },
     {
       "path": "scripts/factory_speech_worker.py",
-      "sha256": "1bb6643b9a723e87a03125748cad56526f2f5a97763e7281fb8ff172e2aa7c62",
-      "bytes": 2108
+      "sha256": "8ec963e257df5e8bfc31ccab447c63a4e5eaa753ea6131594713e14d6049f977",
+      "bytes": 2543
     },
     {
       "path": "scripts/factory_template_input.py",
@@ -5161,8 +5171,8 @@
     },
     {
       "path": "scripts/factory_workspace.py",
-      "sha256": "3674116ff21758c12d341f3fe1f537dd9580aa9550f1bb4d8cdd0c3044c14139",
-      "bytes": 52308
+      "sha256": "b36c1e306e65539ed78be588284f3012c8d9f1e4683ef0de0d56f39d0f41e756",
+      "bytes": 52416
     },
     {
       "path": "scripts/gif_frame_picker.py",
@@ -5191,8 +5201,8 @@
     },
     {
       "path": "scripts/material_editor_ui.py",
-      "sha256": "404d229d1c4c7b3885c4aba4f6a243a99a34f3dc76f9c78c94709ba78f852c5e",
-      "bytes": 37842
+      "sha256": "944f7eb203a774879ef4d537f85694361896e85b15818092b1359fb855400a3f",
+      "bytes": 37969
     },
     {
       "path": "scripts/material_library_ui.py",
@@ -5206,8 +5216,8 @@
     },
     {
       "path": "scripts/material_transfer.py",
-      "sha256": "64c0c453de39137f0403e296a2edda11459f21a3f298d932abbaa16107860ed8",
-      "bytes": 24053
+      "sha256": "1de825671ecebab610ba22b85cfce8a2b5634c4b01ada01669a36562a2abf197",
+      "bytes": 26453
     },
     {
       "path": "scripts/material_transfer_ui.py",
@@ -5245,6 +5255,11 @@
       "bytes": 9570
     },
     {
+      "path": "scripts/package_draft_speed_S0172.py",
+      "sha256": "67cdd90df2b3799bf1b7573803ae43e1fe3a5328dd05636a7a9819bb204ec17f",
+      "bytes": 7802
+    },
+    {
       "path": "scripts/package_menu_original_trial.py",
       "sha256": "67ae7e59fa1a0f66197b0d411d0fc691f3a4e7c1f60c8723a51ef29284e28f76",
       "bytes": 11674
@@ -5255,9 +5270,34 @@
       "bytes": 7717
     },
     {
+      "path": "scripts/package_release_S0174.py",
+      "sha256": "6373c2e9a38517149586f6c58bb33a254a8caeb45e6551ebc33cd0afc1bc04f3",
+      "bytes": 8519
+    },
+    {
+      "path": "scripts/package_startup_recovery_S0170.py",
+      "sha256": "2280e1da34eb8ce4bc4ffad235098da8edf3c1272bcfb57258a4e81c7563bf29",
+      "bytes": 8187
+    },
+    {
+      "path": "scripts/package_transfer_recovery_S0169.py",
+      "sha256": "e91f578d0b054f7c06cfbab6ec6dd028c874c4bfc99c48e8852a3c1a8904c61b",
+      "bytes": 6239
+    },
+    {
       "path": "scripts/package_video_batch_trial.py",
       "sha256": "9b3db93e7a7306790609d61dccf0e0e5550cf909c286497e727181dee2e4846c",
       "bytes": 9290
+    },
+    {
+      "path": "scripts/package_visual_followup_S0173.py",
+      "sha256": "a3706fefd67b9e84ed8de5035a207910eaaa1656702bcf04fd741a21b0114dd7",
+      "bytes": 8400
+    },
+    {
+      "path": "scripts/package_wechat_speed_S0171.py",
+      "sha256": "77e1a8f35c29f6bb45d390e4474f0a8ab69f777fb931fec2c6c67f130acdbad2",
+      "bytes": 8254
     },
     {
       "path": "scripts/package_wechat_visual_trial.py",
@@ -5341,8 +5381,8 @@
     },
     {
       "path": "scripts/qq_cache_probe.py",
-      "sha256": "a25ed6cf4959a8ec8547a6b10890bf6decf463ca9446345ee4e045454d9fe95e",
-      "bytes": 5876
+      "sha256": "afdc57439019a826002d2d8bff439d4887df847859ff06548f51beb75b0e4a74",
+      "bytes": 4835
     },
     {
       "path": "scripts/qq_catalog.py",
@@ -5461,8 +5501,8 @@
     },
     {
       "path": "scripts/scribble_tools.py",
-      "sha256": "7fee0d6e6edfd74c04910ebe664c382a122f6e4dd071c0ccca2aa59736b071c7",
-      "bytes": 23649
+      "sha256": "f02386c7089589f923bbb659a9fdb1490d37afd34b70927c0d131fd68c784c11",
+      "bytes": 24201
     },
     {
       "path": "scripts/scribble_worker.py",
@@ -5551,8 +5591,8 @@
     },
     {
       "path": "scripts/video_speech_ui.py",
-      "sha256": "3430c79f1136bc7469ec61819dc1e7c59d4f0ae5b8ef351b07f0f2b31533cde0",
-      "bytes": 6602
+      "sha256": "811e57b5454b8c15b00a54fbc3367106a41237ef2ed1fd1598f155c5845e44c6",
+      "bytes": 6874
     },
     {
       "path": "scripts/video_timeline.py",
@@ -5561,8 +5601,8 @@
     },
     {
       "path": "scripts/video_tools.py",
-      "sha256": "23278fb42f9dc6f24516a7f36169d65c164fb58d9ddd8bce93b2f3624adc3aae",
-      "bytes": 35721
+      "sha256": "bb8f50fd6432b0fe4a76181933a2f6e1ea59aca07a361720a689c2679a91b6ef",
+      "bytes": 35870
     },
     {
       "path": "scripts/vision_bundle.py",
@@ -5576,8 +5616,8 @@
     },
     {
       "path": "scripts/wechat_batch.py",
-      "sha256": "55fee400ee18a1e5fbc33fdf02162dd0576cc145d108db8ec59cb8fe4cd7407b",
-      "bytes": 43150
+      "sha256": "73d1f425f6a4635c07f1999dbbd7e9aea0c8be80f06f25292e72e7a52645f82e",
+      "bytes": 43777
     },
     {
       "path": "scripts/wechat_batch_workflow.py",
@@ -5606,8 +5646,8 @@
     },
     {
       "path": "scripts/wechat_retry.py",
-      "sha256": "c1841db85d866124140671cce9b9c876bcb89a3e0d5d12824e5e72abac4f18b6",
-      "bytes": 5528
+      "sha256": "0ee37d49f93f69fea2599fe661f12f2eb30eed652db1bc6884999d2984285e13",
+      "bytes": 6149
     },
     {
       "path": "scripts/wechat_uia.ps1",
@@ -5671,8 +5711,8 @@
     },
     {
       "path": "src/emoji_bridge/background_remove.py",
-      "sha256": "5d4649a273ecb8c8d0af350676693fa57f9e3da3f3236c32204afde39242bf2c",
-      "bytes": 18984
+      "sha256": "c23ff812d8af5499abd3e58374c04793efe6ef29a07f95cae03984f31b1ffdd5",
+      "bytes": 19661
     },
     {
       "path": "src/emoji_bridge/batch_transfer.py",
@@ -5686,8 +5726,8 @@
     },
     {
       "path": "src/emoji_bridge/capabilities.py",
-      "sha256": "a49efecf7d241d2e69939dd7cac59308b06e1061b5ce7536809b920f1eac50be",
-      "bytes": 8333
+      "sha256": "cc5c6b729bb6ef31a414836b823be7c6b26bb0f9f5c63141452d842278cd26d5",
+      "bytes": 8804
     },
     {
       "path": "src/emoji_bridge/card_names.py",
@@ -5706,8 +5746,8 @@
     },
     {
       "path": "src/emoji_bridge/client_sources.py",
-      "sha256": "a8d6eea430d49fe280d1ea068769fc73e5364fbfee0c72145bf1e7a967bcf5ae",
-      "bytes": 10259
+      "sha256": "9ba6fa77d36b14d0386da3c424fbf963b79b102d14f2266a096d432c5aba94c6",
+      "bytes": 10241
     },
     {
       "path": "src/emoji_bridge/collage_layout.py",
@@ -5846,8 +5886,8 @@
     },
     {
       "path": "src/emoji_bridge/message_media.py",
-      "sha256": "0a0580b11e5657572ec4d90bdbaa5ffade847a590b807c9b36faefd8ce712211",
-      "bytes": 11339
+      "sha256": "558c4be8ac83a69137e73c27d1cea731fcaa09f3bd68a2ce998ed96f45485083",
+      "bytes": 13284
     },
     {
       "path": "src/emoji_bridge/offline_components.py",
@@ -5881,8 +5921,8 @@
     },
     {
       "path": "src/emoji_bridge/pilot.py",
-      "sha256": "0ccf5294e1a897d9d5147fc33e326649cc5210edd1e0ba39da0a7b1d8889b757",
-      "bytes": 27077
+      "sha256": "711dd4266af57466160fecaf460ac9e46f6e022f93ed4fc5d95af41491cd49f3",
+      "bytes": 30071
     },
     {
       "path": "src/emoji_bridge/preview_media.py",
@@ -5915,6 +5955,11 @@
       "bytes": 22843
     },
     {
+      "path": "src/emoji_bridge/qq_locations.py",
+      "sha256": "483cccf0b4218c41bf9d18e4ad4dce663adbc6e555852632300011d8d10b9444",
+      "bytes": 6543
+    },
+    {
       "path": "src/emoji_bridge/qq_thumbnails.py",
       "sha256": "2c5fdaa7246e6b0f87fb3abf91eddcd4f19b9c66d8c0b1348be940958c5898a0",
       "bytes": 4245
@@ -5938,6 +5983,11 @@
       "path": "src/emoji_bridge/recognition.py",
       "sha256": "abd2a326990c7298e9f35cf997693db71a124e1cca2cbff0d0df87070935d4fe",
       "bytes": 12607
+    },
+    {
+      "path": "src/emoji_bridge/release_components.py",
+      "sha256": "51abf429b676616b8089b604ea9d529de3682c0a14836e0d46697154889a83b8",
+      "bytes": 8019
     },
     {
       "path": "src/emoji_bridge/scene_animation.py",
@@ -6096,8 +6146,8 @@
     },
     {
       "path": "src/emoji_bridge/wechat.py",
-      "sha256": "fe69f58aaafc03a8356f24466cbf1baff47ac92c9b436807d96405cdd5784145",
-      "bytes": 24030
+      "sha256": "5f13d3eeb2025e416c5a73442d15f176207b4bc40da6235435148b49df229e3d",
+      "bytes": 25511
     },
     {
       "path": "src/emoji_bridge/wechat_index.py",
@@ -6106,13 +6156,13 @@
     },
     {
       "path": "src/emoji_bridge/wechat_visual.py",
-      "sha256": "224eab9b2e2c6834c7774df339785e93099d3f4d3a9d0d39abf08bbf44628690",
-      "bytes": 22645
+      "sha256": "ba1e31d835d8fc4d800d2866486a5a214a76d2b8a47d1c0f71fb9742f515db99",
+      "bytes": 24894
     },
     {
       "path": "src/emoji_bridge/wechat_visual_bridge.py",
-      "sha256": "500f0fe5d59d7281fdbf05c92f307aa60601384f2077213dfe10e5807d41af01",
-      "bytes": 28100
+      "sha256": "cd738570dccb9b5a9747527d21ed2bd51ea28b253308b3b67f17bfd9fa8a8461",
+      "bytes": 30105
     },
     {
       "path": "src/emoji_bridge/window_handoff.py",
@@ -6121,8 +6171,8 @@
     },
     {
       "path": "src/emoji_bridge/windows.py",
-      "sha256": "9d1e9113c96f3557fc4716535ee18a13a1ba59af2a2c1032c068a7a80adb5a5c",
-      "bytes": 28839
+      "sha256": "a6a9dd625f8d674e2af0b5f22ef12e794164ac4aa9acf484a44df18b26281713",
+      "bytes": 29564
     },
     {
       "path": "src/emoji_bridge/work_output.py",
@@ -6143,6 +6193,11 @@
       "path": "tests/test_download_startup_S0168.py",
       "sha256": "56e2bb56d70d80e73f2fd1cc38280c09b66246f8157c045ccbbb7327eaa7488e",
       "bytes": 2263
+    },
+    {
+      "path": "tests/test_release_paths_S0174.py",
+      "sha256": "d991d0ce4228eda743c83ee5bdb4c816b9dd5550f42d5cf512cdd4833da8d8eb",
+      "bytes": 8995
     },
     {
       "path": "third_party/cutout/anime-segmentation-LICENSE.txt",

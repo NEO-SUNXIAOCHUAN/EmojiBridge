@@ -8,6 +8,9 @@ def main():
  name=r.get('model','tiny')
  if name not in ('tiny','base','small'):raise ValueError('请选择列表中的字幕模型')
  bundled=Path(__file__).resolve().parents[1]/'runtime/speech-models'/name
+ sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'src'))
+ from emoji_bridge.release_components import resolve,catalog
+ if not bundled.is_dir():bundled=resolve('speech','runtime/speech-models/'+name) or bundled
  local=all((bundled/n).is_file() for n in ('config.json','model.bin','tokenizer.json','vocabulary.txt'))
  selected=str(bundled) if local else name
  if not local:
@@ -17,6 +20,7 @@ def main():
    cached=Path(snapshot_download('Systran/faster-whisper-'+name,cache_dir=r['models'],local_files_only=True))
    if all((cached/n).is_file() for n in ('config.json','model.bin','tokenizer.json','vocabulary.txt')):selected=str(cached);local=True
   except LocalEntryNotFoundError:pass
+ if not local and catalog() and r.get('action')!='prepare':raise RuntimeError('所选字幕模型未安装；默认 tiny 可从设置的字幕组件安装，base / small 请先点“下载并安装所选模型”')
  tick=time.perf_counter();model=WhisperModel(selected,device='cpu',compute_type='int8',cpu_threads=4,num_workers=1,download_root=r['models'],local_files_only=local);loaded=time.perf_counter()-tick
  if r.get('action')=='prepare':
   out.write_text(json.dumps({'model':name,'ready':True,'seconds':time.perf_counter()-tick}),'utf-8');return

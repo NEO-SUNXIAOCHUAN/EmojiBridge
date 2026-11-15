@@ -18,25 +18,8 @@ def read(path):return json.loads(Path(path).read_text(encoding='utf8'))
 
 
 def discover(ini=None):
-    if ini is None:
-        from emoji_bridge.client_sources import qq_configuration
-        ini=qq_configuration()
-    raw=Path(ini).read_bytes();base=None
-    for encoding in ('utf-8-sig','utf-16','gb18030'):
-        try:
-            match=re.search(r'^\s*UserDataSavePath\s*=\s*(.*?)\s*$',raw.decode(encoding),re.M|re.I)
-            if match:base=Path(match.group(1).strip().strip('"'));break
-        except UnicodeError:continue
-    if base is None or not base.is_absolute() or not base.is_dir():raise ValueError('configured_data_root_unavailable')
-    accounts=sorted(p for p in base.iterdir() if p.is_dir() and p.name.isdecimal());roots=[]
-    for account in accounts[:20]:
-        for spelling in ('personal_emoji','personal-emoji'):
-            path=account/'nt_qq/nt_data/Emoji'/spelling/'Ori'
-            if path.is_dir():
-                path=cache.personal_root(path)
-                roots.append({'ori':str(path),'files':sum(p.is_file() for p in path.iterdir()),'current_account_binding':'unproven'})
-    return {'configured_root':str(base),'numeric_roots_inspected':min(20,len(accounts)),
-            'limit_reached':len(accounts)>20,'candidates':roots,'chat_data_read':False,'messages_sent':0}
+    from emoji_bridge.qq_locations import discover as locate
+    return locate(ini)
 
 
 def verify_samples(samples,scan_path,folder):

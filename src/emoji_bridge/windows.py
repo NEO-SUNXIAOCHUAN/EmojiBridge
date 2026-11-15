@@ -146,6 +146,21 @@ def fitted_window_rect(rect,area):
     return (x,y,x+width,y+height)
 
 
+def visual_window_rect(rect,area,dpi):
+    """At a visual task boundary keep all four edges inside the work area.
+
+    Win32 outer rectangles include invisible resize borders. A small inset also
+    leaves room for Qt popup shadows; no primary-screen/absolute-origin guess.
+    """
+    scale=dpi/96;gap=max(8,round(12*scale))
+    safe=(area[0]+gap,area[1]+gap,area[2]-gap,area[3]-gap)
+    width=min(max(rect[2]-rect[0],round(760*scale)),safe[2]-safe[0])
+    height=min(max(rect[3]-rect[1],round(550*scale)),safe[3]-safe[1])
+    if width<700*scale or height<500*scale:
+        raise StopAutomation('display_too_small_for_calibrated_window')
+    return fitted_window_rect((rect[0],rect[1],rect[0]+width,rect[1]+height),safe)
+
+
 def ensure_window_on_screen(window,exe):
     """Task-boundary placement only; retain tested size, identity and DPI."""
     guard(window,exe,foreground=False)

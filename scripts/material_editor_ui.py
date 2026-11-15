@@ -293,6 +293,8 @@ class EditorWindow:
                 self.busy = False
                 if event[0]=='error':
                     self.status.set('未完成：'+event[1])
+                    from component_settings import show_if_missing
+                    show_if_missing(self.window,event[1])
                     if not self.doc:self.opening_label.configure(text='作品未能打开\n'+event[1],wraplength=px(self.window,360))
                     continue
                 _, label, result, image, size = event

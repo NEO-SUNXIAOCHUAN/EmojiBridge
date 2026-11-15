@@ -9,7 +9,7 @@ from . import client_sources as sources, paths
 from .state import save_json
 from . import compatibility as compat
 
-BUILD='preview-S0163-seed-scope'
+BUILD='S0174'
 
 
 def discovery():
@@ -35,6 +35,7 @@ def discovery():
     try:
         from qq_cache_probe import discover
         found=discover()
+        result['qq_location']=found.get('diagnostics',{})
         result['qq_roots']=[i['ori'] for i in found['candidates']]
         if found['limit_reached']:result['issues'].append('qq_account_search_limit')
     except (ValueError,OSError):result['issues'].append('qq_data_location_needed')
@@ -66,9 +67,12 @@ def validate_choice(found,wechat_db,qq_ori):
         if client not in candidates:
             result['disabled_sources'][client]='client_family_unadapted' if info else 'client_not_detected'
             continue
-        _,exe=sources.running_client(client)
-        if str(exe)!=info['exe'] or sources.win.file_version(exe)!=info['version']:
-            raise ValueError('客户端已变化，请重新检测。')
+        try:
+            _,exe=sources.running_client(client)
+            if str(exe)!=info['exe'] or sources.win.file_version(exe)!=info['version']:
+                result['disabled_sources'][client]='client_changed';continue
+        except (ValueError,OSError):
+            result['disabled_sources'][client]='client_not_detected';continue
         result[client+'_exe']=str(exe)
         location=wechat_db if client=='wechat' else qq_ori
         if not location:
@@ -159,23 +163,27 @@ def setup(root,base,on_ready=None):
     import queue,threading
     from tkinter import ttk,filedialog
     from ui_dialogs import messagebox
-    from ui_style import apply
+    from ui_style import apply,ScrollBody
     apply(root)
-    root.title('表情互通 · 首次使用与账号选择');root.geometry('760x640');root.minsize(700,620)
-    frame=ttk.Frame(root,padding=20);frame.pack(fill='both',expand=True)
-    ttk.Label(frame,text='先登录微信和 QQ，再确认本人的表情数据',font=('Microsoft YaHei UI',15)).pack(anchor='w')
-    ttk.Label(frame,text='微信4.1 / 4.2系列、QQ9.9系列按能力检测；具体版本仍逐项核验。客户端支持100%、125%和150%缩放。\n一端不可读取时，另一端仍可准备。检测不发送、不收藏、不删除。',wraplength=700).pack(anchor='w',pady=8)
-    summary=tk.StringVar();ttk.Label(frame,textvariable=summary,wraplength=700).pack(anchor='w',pady=6)
-    fields={};combos={};found={};answer=[];detected=queue.Queue();detecting=[False];validating=[False]
+    root.title('表情互通 · 首次使用与账号选择');root.geometry('800x700');root.minsize(700,560)
+    scroll=ScrollBody(root);scroll.pack(fill='both',expand=True)
+    frame=ttk.Frame(scroll.body,padding=20);frame.pack(fill='both',expand=True)
+    ttk.Label(frame,text='先登录微信和 QQ，再确认本人的表情数据',font=('Microsoft YaHei UI',15)).pack(anchor='w',fill='x')
+    ttk.Label(frame,text='微信4.1 / 4.2系列、QQ9.9系列按能力检测；具体版本仍逐项核验。客户端支持100%、125%和150%缩放。\n一端不可读取时，另一端仍可准备。检测不发送、不收藏、不删除。',wraplength=700).pack(anchor='w',fill='x',pady=8)
+    summary=tk.StringVar();ttk.Label(frame,textvariable=summary,wraplength=700).pack(anchor='w',fill='x',pady=6)
+    fields={};combos={};found={};answer=[];detected=queue.Queue();detecting=[False];validating=[False];manual={}
     location_hint=tk.StringVar()
+    qq_hint=tk.StringVar()
     for key,label in [('wechat_emoticon_db','微信个人表情数据库'),('qq_ori','QQ 个人表情 Ori 目录')]:
-        ttk.Label(frame,text=label).pack(anchor='w',pady=(12,3))
+        ttk.Label(frame,text=label).pack(anchor='w',fill='x',pady=(12,3))
         row=ttk.Frame(frame);row.pack(fill='x');fields[key]=tk.StringVar()
         combos[key]=ttk.Combobox(row,textvariable=fields[key],state='readonly');combos[key].pack(side='left',fill='x',expand=True)
+        combos[key].bind('<<ComboboxSelected>>',lambda event,k=key:manual.update({k:fields[k].get()}))
         def browse(k=key):
             value=(filedialog.askopenfilename(parent=root,title='选择本人的 emoticon.db',filetypes=[('表情数据库','emoticon.db')])
                    if k=='wechat_emoticon_db' else filedialog.askdirectory(parent=root,title='选择本人的 personal_emoji 下的 Ori 文件夹'))
             if value:
+                manual[k]=value
                 combos[k]['values']=list(combos[k]['values'])+[value];fields[k].set(value)
                 if k=='wechat_emoticon_db':
                     location_hint.set('微信位置：已手动选择文件；开始准备时检查路径和读取能力。')
@@ -189,16 +197,30 @@ def setup(root,base,on_ready=None):
                 values=[str(p) for p in locations['candidates']]
                 combos['wechat_emoticon_db']['values']=values
                 fields['wechat_emoticon_db'].set(values[0] if len(values)==1 and not locations['diagnostics']['issues'] else '')
+                manual['wechat_emoticon_db']=fields['wechat_emoticon_db'].get()
                 found['wechat_location']=locations['diagnostics']
                 found['wechat_databases']=values;found.pop('wechat_active',None)
                 sources.LOCATION_DIAGNOSTICS.clear();sources.LOCATION_DIAGNOSTICS.update(locations['diagnostics'])
                 location_hint.set(location_text(locations['diagnostics']))
             ttk.Button(row,text='选择数据文件夹',command=browse_wechat_folder).pack(side='right',padx=(8,0))
-            ttk.Label(frame,textvariable=location_hint,wraplength=700).pack(anchor='w',pady=3)
+            ttk.Label(frame,textvariable=location_hint,wraplength=700).pack(anchor='w',fill='x',pady=3)
+        else:
+            def browse_qq_folder():
+                value=filedialog.askdirectory(parent=root,title='选择 QQ 数据位置：Tencent Files、本人账号或 nt_qq 文件夹')
+                if not value:return
+                from .qq_locations import discover,describe
+                report=discover(roots=[value]);values=[item['ori'] for item in report['candidates']]
+                found['qq_roots']=values;found['qq_location']=report['diagnostics']
+                combos['qq_ori']['values']=values
+                choice=values[0] if len(values)==1 and not report['limit_reached'] else ''
+                fields['qq_ori'].set(choice);manual['qq_ori']=choice
+                qq_hint.set(describe(report['diagnostics']))
+            ttk.Button(row,text='选择数据文件夹',command=browse_qq_folder).pack(side='right',padx=(8,0))
+            ttk.Label(frame,textvariable=qq_hint,wraplength=700).pack(anchor='w',fill='x',pady=3)
     consent=tk.BooleanVar(value=False)
     from ui_style import consent_checkbutton
-    consent_checkbutton(frame,variable=consent,text='这是我本人的账号，我同意在本机读取个人表情并准备原件。').pack(anchor='w',pady=(20,5))
-    ttk.Label(frame,text='微信读取会在本机验证表情数据库所需密钥，不保存密钥、不读聊天数据库、不上传个人数据。\n读取 QQ 收藏时会自动恢复并调整窗口大小，完成准备后由你勾选搬运。\nQQ 不发消息；搬到微信只使用本人的文件传输助手。不会自动删除聊天记录。',wraplength=700).pack(anchor='w',pady=6)
+    consent_checkbutton(frame,variable=consent,text='这是我本人的账号，我同意在本机读取个人表情并准备原件。').pack(anchor='w',fill='x',pady=(20,5))
+    ttk.Label(frame,text='微信读取会在本机验证表情数据库所需密钥，不保存密钥、不读聊天数据库、不上传个人数据。\n读取 QQ 收藏时会自动恢复并调整窗口大小，完成准备后由你勾选搬运。\nQQ 不发消息；搬到微信只使用本人的文件传输助手。不会自动删除聊天记录。',wraplength=700).pack(anchor='w',fill='x',pady=6)
     def refresh():
         if detecting[0] or validating[0]:return
         detecting[0]=True;summary.set('正在只读检测版本和可见控件；不切换窗口，不读取聊天内容。')
@@ -214,8 +236,15 @@ def setup(root,base,on_ready=None):
         except queue.Empty:root.after(80,finish_refresh);return
         detecting[0]=False
         try:
-            if not isinstance(result,dict):raise ValueError('detection_incomplete')
+            if not isinstance(result,dict):
+                found.clear()
+                for key in combos:
+                    values=[manual[key]] if manual.get(key) and Path(manual[key]).exists() else []
+                    combos[key]['values']=values;fields[key].set(values[0] if values else '')
+                raise ValueError('detection_incomplete')
             found.clear();found.update(result)
+            from .qq_locations import describe
+            qq_hint.set(describe(found.get('qq_location',{})))
             location_hint.set(location_text(found.get('wechat_location',{'candidate_count':len(found['wechat_databases'])})))
             for client,info in found['clients'].items():
                 if 'capabilities' in info:compat.LAST_REPORTS[client]=info['capabilities']
@@ -226,11 +255,20 @@ def setup(root,base,on_ready=None):
             for key,source in [('wechat_emoticon_db','wechat_databases'),('qq_ori','qq_roots')]:
                 values=found[source]
                 # A previous source is displayed, but still requires local confirmation.
-                if old.get(key) and Path(old[key]).exists() and old[key] not in values:values=[old[key]]+values
+                explicit=manual.get(key)
+                if explicit and Path(explicit).exists() and explicit not in values:values=[explicit]+values
                 combos[key]['values']=values
-                if key=='wechat_emoticon_db':fields[key].set(preferred_wechat(found,values,old.get(key)))
-                else:fields[key].set(old[key] if old.get(key) in values else values[0] if len(values)==1 else '')
-        except Exception as exc:summary.set('检测未完成：'+type(exc).__name__+'；可以选择实际表情位置后重试。')
+                if explicit in values:fields[key].set(explicit)
+                elif key=='wechat_emoticon_db':fields[key].set(preferred_wechat(found,values,old.get(key)))
+                else:fields[key].set(values[0] if len(values)==1 and 'location_search_limit' not in found.get('qq_location',{}).get('issues',[]) else '')
+        except Exception as exc:
+            found.clear()
+            for key in combos:
+                values=[manual[key]] if manual.get(key) and Path(manual[key]).exists() else []
+                combos[key]['values']=values;fields[key].set(values[0] if values else '')
+            qq_hint.set('QQ 位置：检测未完成，请重新检测或选择实际数据文件夹。')
+            location_hint.set('微信位置：检测未完成，已明确选择且仍存在的位置保留。')
+            summary.set('检测未完成：'+type(exc).__name__+'；可以选择实际表情位置后重试。')
     def start():
         if validating[0]:return
         if detecting[0]:messagebox.showinfo('正在检测','只读能力检查尚未结束，请稍候。',parent=root);return
@@ -255,12 +293,12 @@ def setup(root,base,on_ready=None):
             try:profile=install_choice(base,value)
             except OSError:
                 summary.set('账号配置未能保存，请检查本应用数据目录的访问权限。');return
-            answer.append(profile);frame.destroy()
+            answer.append(profile);scroll.destroy();row.destroy()
             if on_ready:on_ready(profile)
             else:root.quit()
         threading.Thread(target=validate,daemon=True,name='account-choice-check').start()
         root.after(80,finish)
-    row=ttk.Frame(frame);row.pack(fill='x',pady=14)
+    row=ttk.Frame(root,padding=12);row.pack(side='bottom',fill='x',before=scroll)
     ttk.Button(row,text='重新检测',command=refresh).pack(side='left')
     def details():
         messagebox.showinfo('兼容能力（只读检测）',compatibility_text(found.get('clients',{}),probe=False),parent=root)
@@ -270,6 +308,7 @@ def setup(root,base,on_ready=None):
         if file:save_json(file,feedback({}))
     ttk.Button(row,text='导出环境反馈',command=export).pack(side='left',padx=8)
     ttk.Button(row,text='开始准备表情',command=start).pack(side='right')
+    scroll.attach()
     root.after(100,refresh)
     if on_ready:return frame
     root.protocol('WM_DELETE_WINDOW',root.quit);root.mainloop()
@@ -346,6 +385,10 @@ def feedback(library,data_root=None):
     result={'build':BUILD,'system':platform.system(),'windows_release':platform.release(),
             'architecture':platform.machine(),'clients':{},'sent_automatically':False,
             'wechat_location':location_feedback()}
+    from .qq_locations import LAST_DIAGNOSTICS,SAFE_ISSUES
+    result['qq_location']={key:value for key,value in LAST_DIAGNOSTICS.items()
+                           if key in ('candidate_count','roots_checked','existing_roots') and type(value) is int}
+    result['qq_location']['issues']=[v for v in LAST_DIAGNOSTICS.get('issues',[]) if v in SAFE_ISSUES]
     for client in ('wechat','qq'):
         side=library.get('clients',{}).get(client,{})
         items=side.get('items',[]);states={};errors={}

@@ -40,7 +40,7 @@ def main():
     api.promo_status=service.promo_status
     api.install_promo_projects=service.install_promo_projects
     api.collection_enrich=service.collection_enrich
-    for name in ('drop_begin','drop_chunk','drop_finish','drop_notice'):setattr(api,name,getattr(service,name))
+    for name in ('component_status','component_download','component_import','component_verify','drop_begin','drop_chunk','drop_finish','drop_notice'):setattr(api,name,getattr(service,name))
     for name in ('repair_library','library_repair_report','drawer_settings','open_drawer','reclaim_stickers','adjust_stickers','recover_stickers','open_drop_port','factory_listing','factory_plan','factory_generate','factory_preview','factory_preview_status','factory_examples','factory_save','status','preferences','listing','cancel_task','choose_import','paste','organize','collection','locate','choose_directory','export','preview_start','preview_frame','preview_stop','open_native','drag','workspace_layout','dependency_status','prepare_dependency','collection_listing','collection_action','start_transfer','cancel_transfer','transfer_results','cancel_editor_save','cancel_native_activity','restore_examples','assign_collection','undo_collection'):
         setattr(api,name,getattr(service,name))
     if args.debug_port:webview.settings['REMOTE_DEBUGGING_PORT']=args.debug_port

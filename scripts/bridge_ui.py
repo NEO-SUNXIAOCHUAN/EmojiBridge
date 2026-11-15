@@ -941,6 +941,7 @@ class App:
                 elif reason=='sent_media_not_unique_no_resend':reason='已发送，未定位到唯一图片，收藏待确认'
                 elif reason=='composer_not_empty':reason='文件传输助手输入框已有草稿，本次尚未发送；保留并清空草稿后可继续'
                 elif reason=='staged_batch_item_not_unique':reason='输入框中的本批图片未能完整对应，尚未点击发送；草稿已保留'
+                elif reason=='staged_draft_missing_requires_confirmation':reason='旧记录停在发送前，但助手输入框已空；点继续确认是否手动发送过，程序不会直接重发'
                 elif reason=='wechat_group_incomplete_no_next_send':reason='本批尚未完成，后续批次未发送；已保存进度'
                 elif reason in ('prior_batch_attempt_no_automatic_resend','prior_unsent_draft_requires_confirmation'):
                     reason='旧任务记录需处理；点“继续上次队列”，可确认并恢复未发送项'

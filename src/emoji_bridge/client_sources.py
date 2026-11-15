@@ -88,7 +88,7 @@ def qq_personal_root():
     explicit=config.get('qq_ori')
     if explicit:return personal_root(explicit)
     from qq_cache_probe import discover
-    found=discover(qq_configuration())
+    found=discover()
     if found['limit_reached'] or len(found['candidates'])!=1:
         raise ValueError('personal_cache_root_ambiguous_or_missing')
     return personal_root(found['candidates'][0]['ori'])

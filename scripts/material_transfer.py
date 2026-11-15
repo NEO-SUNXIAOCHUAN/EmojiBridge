@@ -29,6 +29,7 @@ def job_stage(job):
     if job.get('collection_verified') or job.get('status') in ('desktop_confirmed', 'already_exists'):
         return '已确认收藏'
     if job.get('historical_target_receipt'):return '核验历史结果（未重新发送）'
+    if job.get('staged_recovery_requires_confirmation'):return '旧草稿已不在输入框，待确认'
     if job.get('status') == 'add_executed': return '待收藏确认'
     if job.get('status') == 'batch_message_sent': return '已发送，待收藏确认'
     if job.get('file_submission') in ('send_requested','submitted_to_client','send_pending'): return '已交给客户端，发送待确认'
@@ -61,8 +62,19 @@ def recovery_text(plan):
         reasons=list(dict.fromkeys(j.get('reason','原件尚未取得') for j in jobs if j.get('status')=='waiting_original'))
         return f'等待原件 {waiting} 项，任务尚未完成。'+ '；'.join(reasons[:2])+' 打开来源客户端的表情收藏，待原图加载后点“继续 / 重试未完成”；沿用本任务。'
     if jobs and all(job_stage(j) in ('已确认收藏','用户已确认完成') for j in jobs):return '本次收藏已确认；作品和结果已保留。'
+    if any(j.get('staged_recovery_requires_confirmation') and job_stage(j) not in ('已确认收藏','用户已确认完成') for j in jobs):
+        return '旧草稿已不在助手输入框中。点“继续 / 重试未完成”确认是否手动发送过；只有确认未发送，才会重新选入这些文件。'
     uncertain=[j for j in jobs if j.get('submission_state')=='may_have_started' or j.get('file_submission') in ('send_requested','submitted_to_client','send_pending')]
-    if uncertain:return '提交结果待核验；点“继续 / 重试未完成”先核验已有结果，不盲目重发。'
+    if uncertain:
+        notes={
+            'staged_batch_item_not_unique':'输入框中的图片未能与所选文件完整对应，尚未点击发送。',
+            'composer_not_expected_media_batch':'输入框内容与本批文件不符，尚未点击发送。',
+            'composer_media_loading_timeout':'选文件后未等到本批图片完整加载，尚未点击发送。',
+            'file_dialog_selection_not_accepted':'选文件窗口尚未确认接收，本次未点击发送。',
+            'wechat_visual_send_button_unproven':'未能确认发送按钮，本次尚未点击发送。',
+        }
+        detail=next((notes[j.get('reason')] for j in uncertain if j.get('reason') in notes),'')
+        return detail+'提交结果待核验；点“继续 / 重试未完成”先核验已有结果，不盲目重发。'
     reason=plan.get('pause_reason') or next((j.get('reason') for j in jobs if j.get('reason')), '')
     if plan.get('target')=='qq':
         from emoji_bridge.qq_controls import explain_error
@@ -209,7 +221,8 @@ def run(path, data_root, *, resume=False, clear_cancel=True, progress=None, pref
                             'target_asset','conversion','prepared_metadata','collection_verified',
                             'collection_persisted','completion_check','membership_evidence',
                             'confirmation_source','file_selection_step','file_submission',
-                            'file_path_verified','file_window_observation','pause_window','reason','retry_approval')
+                            'file_path_verified','file_window_observation','pause_window','reason','retry_approval',
+                            'staged_recovery_requires_confirmation')
                     job.update({k:v for k,v in prior[job['item_id']].items() if k in fields})
                     if job['status'] in SUCCESS or job.get('collection_verified'):
                         # A NEW user intent must not turn a historical receipt
@@ -293,6 +306,7 @@ def run(path, data_root, *, resume=False, clear_cancel=True, progress=None, pref
                 for job in plan['jobs']:
                     if job.get('target_asset') and str(Path(job['target_asset']).resolve()) in approvals and job['status'] not in DONE:
                         job.update(status='queued', submission_state='not_started')
+                        job.pop('staged_recovery_requires_confirmation',None)
                 save()
                 if wx_execute is None:
                     from functools import partial
@@ -309,8 +323,14 @@ def run(path, data_root, *, resume=False, clear_cancel=True, progress=None, pref
                         outcome = result.get('results', {}).get(str(Path(job['target_asset']).resolve()))
                         if not outcome:
                             continue
+                        if outcome.get('reason')=='local_membership_not_confirmed_no_retry' and job.get('reason'):
+                            # An absent membership result cannot explain the
+                            # interrupted action. Keep its concrete cause and
+                            # report available across repeated read-only checks.
+                            if job.get('result'):job.setdefault('interrupted_result',job['result'])
+                            outcome=dict(outcome,reason=job['reason'])
                         for key in ('status', 'reason', 'collection_verified', 'collection_persisted',
-                                    'completion_check', 'membership_evidence', 'submission_state', 'file_selection_step', 'file_submission', 'file_path_verified', 'file_window_observation','pause_window'):
+                                    'completion_check', 'membership_evidence', 'submission_state', 'file_selection_step', 'file_submission', 'file_path_verified', 'file_window_observation','pause_window','staged_recovery_requires_confirmation'):
                             if key in outcome:
                                 job[key] = outcome[key]
                             elif key in ('file_selection_step','file_submission','file_path_verified','file_window_observation','pause_window'):
@@ -331,12 +351,18 @@ def run(path, data_root, *, resume=False, clear_cancel=True, progress=None, pref
                     # A complete, proven unsent draft can be resumed in place.
                     # Never reopen the picker or clear a user's changed input.
                     from wechat_retry import staged_evidence
-                    staged=[j for j in unknown if j['status'] not in DONE]
+                    staged=[j for j in unknown if j['status'] not in DONE and not j.get('staged_recovery_requires_confirmation')]
                     if resume and staged and not cancel.exists() and staged_evidence([j['target_asset'] for j in staged],data_root):
                         merge(wx_execute([j['target_asset'] for j in staged],cancel,resume_staged=True,progress=merge))
-                    if any(j['status'] not in DONE for j in unknown):
+                    unresolved=[j for j in unknown if j['status'] not in DONE]
+                    if unresolved and not all(j.get('staged_recovery_requires_confirmation') for j in unresolved):
                         plan['run_state'] = 'paused'; save(); return plan
-                fresh = [j for j in plan['jobs'] if j['status'] not in DONE and not j.get('preparation_error')]
+                # An absent old draft is retained for explicit recovery. It
+                # must neither be resent nor hold unrelated, never-submitted
+                # items hostage. The new executor still proves an empty own
+                # composer before opening the picker.
+                fresh = [j for j in plan['jobs'] if j['status'] not in DONE and not j.get('preparation_error')
+                         and not any(j is old for old in unknown)]
                 if fresh and not cancel.exists():
                     check_profile(plan, data_root)
                     for job in fresh:
