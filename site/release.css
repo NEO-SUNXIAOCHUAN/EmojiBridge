@@ -5,3 +5,24 @@
 .star-invitation{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:34px 0;border-bottom:1px solid #7891a633}.star-invitation strong{font-size:24px;font-weight:550}.star-invitation p{font-size:15px;line-height:1.85;color:#b8c8da;margin:12px 0 0}.film-support{margin:24px 0;display:flex;gap:22px;align-items:center;flex-wrap:wrap}.film-support p{color:#b8c8da;font-size:15px}
 @media(max-width:640px){.star-invitation{align-items:flex-start;flex-direction:column}.usage-note{padding:20px;font-size:14px}.star-invitation strong{font-size:22px}.hero-actions .star-link{min-height:48px}}
 @media(prefers-reduced-motion:reduce){.star-link{transition:none}}
+
+/* S0175: three editions, one download area. */
+.edition-heading{padding:28px 32px;background:#192a40}
+.edition-heading h3{font-size:22px;color:#edf4f8}
+.edition-heading p{margin-top:10px;font-size:14px;line-height:1.8;color:#b8c8da}
+.edition-heading strong{font-weight:550;color:#edf4f8}
+.edition-row{display:flex;align-items:center;justify-content:space-between;gap:28px;padding:28px 32px;border-top:1px solid #384e66}
+.edition-row h3{font-size:19px;color:#edf4f8}
+.edition-row p{max-width:48ch;margin-top:9px;font-size:14px;line-height:1.8;color:#b8c8da}
+.edition-recommendation{display:inline-block;margin-left:10px;font-size:12px;font-weight:500;color:#b8ddcd;vertical-align:middle}
+.edition-link{flex-shrink:0;min-height:48px;width:272px;justify-content:center;text-align:center;font-variant-numeric:tabular-nums}
+.edition-secondary{display:inline-flex;align-items:center;padding:14px 18px;border:1px solid #718ba5;border-radius:8px;font-size:14px;font-weight:600;color:#edf4f8;background:transparent;transition:background .18s}
+.edition-secondary:hover{background:#243952}
+.download-options .material-download{padding:25px 32px}
+.download-options .material-download b{font-size:14px}
+.download-options .material-download small{font-size:12px}
+.download-options .edition-link{font-size:14px}
+.download-top .release-note{font-size:12px}
+#release-details{border-left:0;border-top:1px solid #58728d;padding:24px 28px}
+@media(max-width:760px){.edition-heading{padding:24px}.edition-row{align-items:flex-start;flex-direction:column;gap:18px;padding:24px}.edition-link{width:100%}.edition-heading h3{font-size:20px}.edition-row p{max-width:none}.download-options .material-download{padding:24px}}
+@media(prefers-reduced-motion:reduce){.edition-secondary{transition:none}}

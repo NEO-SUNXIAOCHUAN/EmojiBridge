@@ -53,18 +53,21 @@
 
 ## 下载与开始使用
 
-**S0174 · 下载 ZIP → 全部解压 → 双击 EB/EmojiBridge.exe。无需安装 Python。**
+**S0175 · 三版任选一个 → 全部解压 → 双击 EB/EmojiBridge.exe。无需安装 Python。**
 
-| 下载项 | 怎么选 |
+| 下载 | 怎么选 |
 | --- | --- |
-| [轻量版 ZIP · 523.25 MB（推荐）](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/releases/download/S0174/EmojiBridge-S0174-Windows-x64-lite.zip) | 自带默认自动抠图、基础编辑、视频/GIF、拖出与互通组件；更多模型和模板在设置中选装 |
-| [完整离线版 ZIP · 1.35 GB](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/releases/download/S0174/EmojiBridge-S0174-Windows-x64-full.zip) | 另含动漫/精细抠图、tiny 字幕及模板扩展 |
-| [宣传片同款表情包 · 707 MB](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/releases/download/S0163/EmojiBridge-promo-assets-20261114.zip) | 独立可选，解压后多选导入 |
-| [对应公开源码](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/releases/download/S0174/EmojiBridge-S0174-public-source.zip) · [SHA256 校验](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/releases/download/S0174/SHA256SUMS.txt) | 开发者或需要核验下载内容的用户 |
+| [轻量版 ZIP · 523.26 MB（推荐）](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/releases/download/S0175/EmojiBridge-S0175-Windows-x64-lite.zip) | 自带默认自动抠图、基础编辑、视频/GIF、OCR 与互通组件；更多模型和模板按需选装 |
+| [带模板版 ZIP · 859.43 MB](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/releases/download/S0175/EmojiBridge-S0175-Windows-x64-lite-templates.zip) | 包含轻量版全部功能与表情工厂模板，无需另装模板包 |
+| [完整离线版 ZIP · 1.35 GB](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/releases/download/S0175/EmojiBridge-S0175-Windows-x64-full.zip) | 包含带模板版全部内容，再含动漫/精细抠图和 tiny 字幕 |
+| [公开源码 · 114.63 MB](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/releases/download/S0175/EmojiBridge-S0175-public-source.zip) · [SHA256 校验](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/releases/download/S0175/SHA256SUMS.txt) | 开发者或需要核验下载内容的用户 |
+| [宣传片同款素材 · 707 MB](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/releases/download/S0163/EmojiBridge-promo-assets-20261114.zip) | 独立可选，解压后多选导入，不随软件自动初始化 |
 
-两版均包含默认 **自动／U²-Net** 模型，默认抠主体无需下载。轻量版可通过“设置 → 可选组件”下载并导入动漫/精细抠图、字幕或模板组件。缺少系统 WebView2 时，按启动提示安装微软官方组件。
+三版都自带默认 **自动／U²-Net** 模型，默认抠主体无需下载。轻量版可通过“设置 → 可选组件”添加模型与模板；已有 S0174 组件可继续使用。缺少系统 WebView2 时，按启动提示安装微软官方组件。
 
-**已整合 S0169—S0173 累计补丁和本次 QQ 路径、重新检测、窗口贴边处理修复，并保留 DLL 启动修复。** 保存作品并退出旧版，解压到新目录启动；保留个人素材和旧目录，不叠加旧补丁。自定义数据目录沿用原参数。故障外机仍需复测，不保证所有环境问题均已解决。
+S0175 已包含此前累计修复。保存作品并退出旧程序，解压到新目录启动；保留旧目录与个人素材、账号和草稿。**不要再叠加旧补丁，也不要混合覆盖不同版本。** 使用自定义 `--data-dir` 的用户继续使用原数据目录参数。
+
+本版修复浅色微信搜索、白边/透明图片匹配及已知未发送草稿恢复，并减少重复文字识别。创作页支持多选删除草稿；同一素材可重复贴到桌面，固定后可取消、右键可旋转；编辑器平移可再次点击、按 Esc 或切换工具退出。保留此前 QQ 路径发现、重新检测状态及下载标记 DLL 启动修复。
 
 [安装、选装组件与完整升级说明](https://neo-sunxiaochuan.github.io/EmojiBridge/docs/DOWNLOADS.html)
 
