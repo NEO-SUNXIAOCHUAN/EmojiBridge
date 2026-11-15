@@ -321,6 +321,9 @@ class LayoutEditor(EditorWindow):
         return True
 
     def set_tool(self,key):
+        if getattr(self,'hand_mode',False):
+            self.hand_mode=False;self.pan_gesture=None;self.set_cursor('arrow')
+            if hasattr(self,'hand_button'):self.hand_button.configure(text='平移')
         if key!='collage' and hasattr(self,'collage_controller'):self.collage_controller.hide_preview()
         self.active_tool=key
         if key!='cutout' and hasattr(self,'cutout'):self.cutout.deactivate()
@@ -335,6 +338,8 @@ class LayoutEditor(EditorWindow):
 
     def select_tool(self):
         self.hand_mode=False
+        self.pan_gesture=None
+        if hasattr(self,'hand_button'):self.hand_button.configure(text='平移')
         if self.inline and not self.finish_text():return
         self.set_tool('select')
         self.show_property(self.shapes_page if self.doc and self.selected_layer and self.doc._find(self.selected_layer)['kind']=='shape' else self.object_page)
@@ -1412,9 +1417,12 @@ class LayoutEditor(EditorWindow):
         zoomrow=ttk.Frame(row);zoomrow.pack(fill='x')
         recoverrow=ttk.Frame(row);recoverrow.pack(fill='x')
         for parent,text,cmd in [(zoomrow,'−',lambda:self.zoom_by(.8)),(zoomrow,'适应画布',lambda:self.zoom_by(None)),(zoomrow,'+',lambda:self.zoom_by(1.25)),(zoomrow,'平移',self.hand_tool),(recoverrow,'定位所选',self.locate_selected),(recoverrow,'移回画布',self.return_selected)]:
-            ttk.Button(parent,text=text,width=max(2,len(text)*2),command=cmd).pack(side='left',padx=px(self.window,2))
+            button=ttk.Button(parent,text=text,width=8 if text=='平移' else max(2,len(text)*2),command=cmd)
+            button.pack(side='left',padx=px(self.window,2))
+            if text=='平移':self.hand_button=button
         self.canvas.bind('<ButtonPress-2>',self.pan_press);self.canvas.bind('<B2-Motion>',self.pan_move);self.canvas.bind('<ButtonRelease-2>',self.pan_release)
         self.hand_mode=False;self.pan_gesture=None
+        self.canvas.bind('<Escape>',self.exit_hand_tool,add='+')
         for text,key in [('显示 / 隐藏','visible'),('锁定 / 解锁','locked')]:
             ttk.Button(self.layers_host,text=text,command=lambda k=key:self.toggle_layer_flag(k)).pack(side='left',fill='x',expand=True)
 
@@ -1424,7 +1432,15 @@ class LayoutEditor(EditorWindow):
         self.action(lambda:self.doc.update_layer(self.selected_layer,**{key:not layer.get(key,key=='visible')}),'调整图层状态')
 
     def hand_tool(self):
-        self.select_tool();self.hand_mode=True;self.set_cursor('fleur');self.status.set('拖动平移工作区；点击“选择 / 变换”退出。中键也可随时平移。')
+        if getattr(self,'hand_mode',False):
+            self.select_tool();return
+        self.select_tool();self.hand_mode=True;self.set_cursor('fleur')
+        self.hand_button.configure(text='退出平移')
+        self.status.set('拖动平移工作区；再点“退出平移”或按 Esc 返回编辑。中键也可随时平移。')
+
+    def exit_hand_tool(self,event=None):
+        if getattr(self,'hand_mode',False):
+            self.select_tool();return 'break'
 
     def pan_press(self,event):
         self.canvas.focus_set();self.pan_gesture=(event.x,event.y,self.pan);return 'break'

@@ -15,7 +15,7 @@ def selected(name):
     if p.parts[0]=='scripts':
         return p.name in BUILD_SCRIPTS or (not p.name.startswith(('check_','drop_','build_'))
             and (p.suffix in ('.py','.ps1') or p.name=='qq_accessible.cs'))
-    return (p.parts[0]=='tests' and p.name in ('test_builtin_upgrade_S0162.py','test_download_startup_S0168.py','test_release_paths_S0174.py')) or (p.parts[0]=='docs' and p.name in DOCS)
+    return (p.parts[0]=='tests' and p.name in ('test_builtin_upgrade_S0162.py','test_download_startup_S0168.py','test_release_paths_S0174.py','test_visual_white_S0175.py','test_qq_staged_S0175.py','test_creation_controls_S0175.py')) or (p.parts[0]=='docs' and p.name in DOCS)
 def digest(data):return hashlib.sha256(data).hexdigest()
 def export(destination):
     destination=Path(destination).resolve()

@@ -77,3 +77,5 @@ header{padding:20px 24px 12px}
 .setting input[type=range]:hover::-webkit-slider-thumb,.setting input[type=range]:active::-webkit-slider-thumb{background:var(--accent)}
 .setting output{min-width:4ch;text-align:right;font-variant-numeric:tabular-nums}
 .settings-page button:active:not(:disabled),.dialog button:active:not(:disabled){transform:none;background:var(--selected)}
+
+.create-section{flex-wrap:wrap;gap:12px}.draft-actions{display:flex;flex-wrap:wrap;gap:8px}.draft-actions button{font-size:13px}.draft-hint{color:var(--muted);margin:0 0 16px}.recent-strip .draft-choice{position:relative}.draft-choice[aria-checked="true"]{border-color:#94bafa}.draft-check{position:absolute;right:12px;top:12px;width:24px;height:24px;border:1px solid #7187a6;border-radius:6px;display:grid;place-items:center;background:var(--sidebar)}.draft-choice[aria-checked="true"] .draft-check{background:#94bafa;color:#111318}

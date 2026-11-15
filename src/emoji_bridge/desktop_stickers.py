@@ -62,9 +62,6 @@ class StickerManager:
     def show(self, path, ident=None):
         # Decoding is on the JS bridge worker, never the Win32/UI message thread.
         ident=ident or str(Path(path).resolve())
-        existing=self._submit(lambda:next((h for h,s in self._windows.items() if s['ident']==ident),None))
-        if existing:
-            self._submit(lambda:self._recover(existing));return {'ok':True,'id':str(existing),'existing':True}
         decoded=display_stream(Path(path))
         try:return self._submit(lambda:self._create(decoded,Path(path).stem,ident,Path(path)))
         except Exception:decoded[0].close();raise
@@ -86,9 +83,10 @@ class StickerManager:
     def _fixed(self,handle,value):
         state=self._windows[handle]
         style=self.user32.GetWindowLongPtrW(handle,-20)
-        self.user32.SetWindowLongPtrW(handle,-20,style|0x20 if value else style&~0x20)
+        # Fixed locks placement, but the pin remains clickable to unlock it.
+        self.user32.SetWindowLongPtrW(handle,-20,style&~0x20)
         self.user32.SetWindowPos(handle,None,0,0,0,0,0x37)
-        state.update(fixed=bool(value),hover=not value,dragging=None,dirty=True)
+        state.update(fixed=bool(value),hover=True,dragging=None,dirty=True)
         self._draw(handle)
 
     def _workarea(self,x,y):
@@ -102,9 +100,9 @@ class StickerManager:
 
     def _recover(self,handle):
         state=self._windows[handle];area=self._workarea(state['x'],state['y'])
-        width,height=state['frame'].size;scale=state['scale']*state.get('dpi',96)/96
-        state['x']=max(area.left,min(state['x'],area.right-round(width*scale)))
-        state['y']=max(area.top,min(state['y'],area.bottom-round(height*scale)))
+        width,height=self._display_frame(state).size
+        state['x']=max(area.left,min(state['x'],area.right-width))
+        state['y']=max(area.top,min(state['y'],area.bottom-height))
         state['dirty']=True;self._draw(handle)
         if not self._suspended:self.user32.ShowWindow(handle,4)
 
@@ -236,9 +234,6 @@ class StickerManager:
 
     def _create(self, decoded, title, ident, path):
         stream,frame,duration,count,loops=decoded
-        existing=next((h for h,s in self._windows.items() if s['ident']==ident),None)
-        if existing:
-            stream.close();self._recover(existing);return {'ok':True,'id':str(existing),'existing':True}
         if len(self._windows) >= 16:
             raise ValueError("最多同时显示 16 张贴图，请先收回部分贴图；库内原件不受影响")
         width, height = frame.size
@@ -263,24 +258,39 @@ class StickerManager:
             raise
         return {"ok": True, "id": str(handle), "count": len(self._windows)}
 
-    def _draw(self, handle):
-        state = self._windows[handle]
+    @staticmethod
+    def _display_frame(state):
         image = state['frame']
         scale=state['scale']*state.get('dpi',96)/96
         if scale != 1:
             image = image.resize((max(24, round(image.width * scale)),
                                   max(24, round(image.height * scale))), Image.Resampling.LANCZOS)
+        if state.get('angle',0):image=image.rotate(state['angle'],Image.Resampling.BICUBIC,expand=True)
+        return image
+
+    def _rotate(self,handle,angle):
+        state=self._windows[handle]
+        if state.get('fixed'):return
+        old=self._display_frame(state).size;state['angle']=angle%360
+        new=self._display_frame(state).size
+        state['x']+=round((old[0]-new[0])/2);state['y']+=round((old[1]-new[1])/2)
+        self._recover(handle)
+
+    def _draw(self, handle):
+        state = self._windows[handle]
+        image = self._display_frame(state)
         width, height = image.size
-        if not state.get('fixed'):
-            # Near-transparent hit surface permits grabbing transparent corners;
-            # this is display-only and never changes the managed PNG/GIF.
-            surface=Image.new('RGBA',image.size,(0,0,0,1));surface.alpha_composite(image);image=surface
-            if state.get('hover'):
-                d=ImageDraw.Draw(image);r=max(12,round(18*state.get('dpi',96)/96));state['control_size']=r
-                d.rounded_rectangle((0,0,width-1,height-1),radius=5,outline='#94bafa',width=1)
-                d.rectangle((0,0,r,r),fill='#25344bee');d.text((3,1),'□',fill='white')
-                d.rectangle((width-r,0,width, r),fill='#25344bee');d.line((width-r+5,5,width-5,r-5),fill='white',width=2);d.line((width-5,5,width-r+5,r-5),fill='white',width=2)
-                d.rectangle((width-r,height-r,width-1,height-1),fill='#94bafa')
+        # Near-transparent hit surface permits grabbing transparent corners;
+        # this is display-only and never changes the managed PNG/GIF.
+        surface=Image.new('RGBA',image.size,(0,0,0,1));surface.alpha_composite(image);image=surface
+        if state.get('hover'):
+            d=ImageDraw.Draw(image);r=max(12,round(18*state.get('dpi',96)/96));state['control_size']=r
+            d.rounded_rectangle((0,0,width-1,height-1),radius=5,outline='#94bafa',width=1)
+            d.rectangle((0,0,r,r),fill='#587299' if state.get('fixed') else '#25344bee')
+            d.line((r//2,4,r//2,r-3),fill='white',width=2)
+            d.line((4,6,r-4,6),fill='white',width=2)
+            d.rectangle((width-r,0,width, r),fill='#25344bee');d.line((width-r+5,5,width-5,r-5),fill='white',width=2);d.line((width-5,5,width-r+5,r-5),fill='white',width=2)
+            if not state.get('fixed'):d.rectangle((width-r,height-r,width-1,height-1),fill='#94bafa')
         pixels = image.convert("RGBa").tobytes("raw", "BGRa")
         screen = self.user32.GetDC(None)
         memory = self.gdi32.CreateCompatibleDC(screen)
@@ -322,7 +332,7 @@ class StickerManager:
                     state.update(x=rect.left,y=rect.top)
                 return 0
             if message == 0x0113:  # WM_TIMER
-                if not state.get('fixed') and not state.get('dragging'):
+                if not state.get('dragging'):
                     p=w.POINT();self.user32.GetCursorPos(c.byref(p));rect=w.RECT();self.user32.GetWindowRect(handle,c.byref(rect))
                     inside=rect.left<=p.x<rect.right and rect.top<=p.y<rect.bottom
                     if inside!=state.get('hover'):state.update(hover=inside,dirty=True)
@@ -341,13 +351,13 @@ class StickerManager:
                     self._draw(handle)
                 return 0
             if message in (0x0201,0x0203):  # down / double-click followed by dragging
-                if state.get('fixed'):return 0
                 point = w.POINT()
                 self.user32.GetCursorPos(c.byref(point))
                 rect=w.RECT();self.user32.GetWindowRect(handle,c.byref(rect));r=state.get('control_size',18)
                 x,y=point.x-rect.left,point.y-rect.top
-                if y<r and x<r:self._fixed(handle,True);return 0
+                if y<r and x<r:self._fixed(handle,not state.get('fixed'));return 0
                 if y<r and x>=rect.right-rect.left-r:self.user32.DestroyWindow(handle);return 0
+                if state.get('fixed'):return 0
                 corner=x>=rect.right-rect.left-r and y>=rect.bottom-rect.top-r
                 state["dragging"] = ('resize' if corner else 'move',point.x,point.y,state['x'],state['y'],state['scale'],rect.right-rect.left,rect.bottom-rect.top)
                 self.user32.SetCapture(handle)
@@ -378,6 +388,7 @@ class StickerManager:
                 state.update(x=rect.left,y=rect.top,dpi=int(wp)&0xffff,dirty=True)
                 self._recover(handle);return 0
             if message == 0x020A:  # wheel
+                if state.get('fixed'):return 0
                 delta = c.c_short((wp >> 16) & 0xffff).value
                 state["scale"] = max(.25, min(2.5, state["scale"] * (1.1 if delta > 0 else 1 / 1.1)))
                 state["dirty"] = True
@@ -392,7 +403,9 @@ class StickerManager:
                     self.user32.AppendMenuW(menu, 0, 3, "放大")
                     self.user32.AppendMenuW(menu, 0, 4, "缩小")
                     self.user32.AppendMenuW(menu, 0, 5, "找回到屏幕内")
-                    self.user32.AppendMenuW(menu, 0, 6, "固定位置并穿透 · 从随手素材恢复调整")
+                    self.user32.AppendMenuW(menu, 0, 6, "取消固定" if state.get('fixed') else "固定位置 · 再点左上角取消")
+                    for key,label in ((7,'向左旋转 15°'),(8,'向右旋转 15°'),(9,'恢复原角度')):
+                        self.user32.AppendMenuW(menu, 1 if state.get('fixed') else 0, key, label)
                     action = self.user32.TrackPopupMenu(menu, 0x0100 | 0x0002, point.x, point.y, 0, handle, None)
                     if action == 1:
                         self._toggle_playback(state)
@@ -400,7 +413,8 @@ class StickerManager:
                         self.user32.DestroyWindow(handle)
                     elif action in (3,4):state['scale']=max(.25,min(2.5,state['scale']*(1.1 if action==3 else 1/1.1)));state['dirty']=True
                     elif action==5:self._recover(handle)
-                    elif action==6:self._fixed(handle,True)
+                    elif action==6:self._fixed(handle,not state.get('fixed'))
+                    elif action in (7,8,9):self._rotate(handle,0 if action==9 else state.get('angle',0)+(15 if action==7 else -15))
                 finally:
                     self.user32.DestroyMenu(menu)
                 return 0

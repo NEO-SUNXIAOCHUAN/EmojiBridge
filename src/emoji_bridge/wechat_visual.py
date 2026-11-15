@@ -113,7 +113,7 @@ def search_box(image, divider, scale, cv2):
     for contour in contours:
         x,y,w,h = cv2.boundingRect(contour)
         if (45*scale < x < 110*scale and 20*scale < y < 80*scale
-                and 70*scale < w < 350*scale and 18*scale < h < 45*scale
+                and 70*scale < w < divider-x and 18*scale < h < 45*scale
                 and x+w < divider-15*scale):
             rect = (x,y,x+w,y+h)
             if not any(max(abs(a-b) for a,b in zip(rect,old)) < 4*scale for old in boxes):
@@ -147,7 +147,9 @@ def helper_icon(image, label, scale, cv2):
               int(x-8*scale), min(image.height, int(bottom+28*scale)))
     a = np.asarray(image.convert('RGB').crop(region))
     white = (a.min(axis=2) > 210).astype('uint8')*255
-    contours, _ = cv2.findContours(white, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # A light list/search background surrounds the green avatar. The white
+    # folder is then a nested contour; EXTERNAL discards it entirely.
+    contours, _ = cv2.findContours(white, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
     template = Image.new('L', (32, 26))
     d = ImageDraw.Draw(template)
     d.polygon([(0, 0), (10, 0), (13, 3), (31, 3), (31, 25), (0, 25)], fill=255)

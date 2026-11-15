@@ -913,10 +913,10 @@ class DesktopService:
         return {'opened':True,'route_serial':self.route_serial}
 
     def drafts(self,remove=None):
-        from draft_catalog import listing,remove as delete
+        from draft_catalog import listing,remove_many
         if remove:
-            delete(self.store.root,remove)
-            self.commands.put({'kind':'draft_deleted','id':remove})
+            for ident in remove_many(self.store.root,remove if isinstance(remove,list) else [remove]):
+                self.commands.put({'kind':'draft_deleted','id':ident})
         return [dict(row,thumbnail=f'{self.url}/{self.token}/draft-cover/{row["id"]}?v={row["updated"]}') for row in listing(self.store.root)]
 
     def drag_files(self,ids):

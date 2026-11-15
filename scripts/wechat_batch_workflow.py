@@ -36,8 +36,8 @@ def run(path,library_path,storage,resume=False,progress=None,execute_batch=None,
         if send_group:plan['progress']['send_group']=send_group
         save()
         if progress:progress(plan['progress'])
-    def dispatch(assets,n,resume_sent=False):
-        options={'resume_sent':True} if resume_sent else {}
+    def dispatch(assets,n,resume_sent=False,resume_staged=False):
+        options={'resume_sent':True} if resume_sent else {'resume_staged':True} if resume_staged else {}
         if execute_batch is execute:
             approvals={str(Path(j['target_asset']).resolve()):j['retry_approval'] for j in plan['jobs']
                        if j.get('target_asset') in assets and j.get('retry_approval')}
@@ -47,7 +47,7 @@ def run(path,library_path,storage,resume=False,progress=None,execute_batch=None,
                     for j in plan['jobs']:
                         r=value.get('results',{}).get(str(Path(j.get('target_asset','')).resolve()))
                         if r:
-                            for k in ('status','reason','collection_verified','collection_persisted','completion_check','membership_evidence','submission_state','file_selection_step','file_submission','file_path_verified','file_window_observation','pause_window'):
+                            for k in ('status','reason','collection_verified','collection_persisted','completion_check','membership_evidence','submission_state','file_selection_step','file_submission','file_path_verified','file_window_observation','pause_window','staged_recovery_requires_confirmation'):
                                 if k in r:j[k]=r[k]
                                 elif k in ('file_selection_step','file_submission','file_path_verified','file_window_observation','pause_window'):
                                     j.pop(k,None)
@@ -99,13 +99,37 @@ def run(path,library_path,storage,resume=False,progress=None,execute_batch=None,
             if any(j['status'] not in DONE for _,j in recovery):
                 plan['run_state']='cancelled' if cancel.exists() else 'paused' if any(j.get('reason') in INTERRUPTIONS for _,j in recovery) else 'partial'
                 save();return plan
+        # The QQ source workflow must also resume a complete known-unsent
+        # composer, just like the material-library workflow. History alone
+        # never clicks Send: execute re-proves the complete current draft.
+        if resume:
+            from wechat_retry import staged_evidence
+            staged=[(n,j) for n,j in pending if j.get('submission_state')=='may_have_started'
+                    and j.get('target_asset') and not j.get('staged_recovery_requires_confirmation')]
+            assets=list(dict.fromkeys(j['target_asset'] for _,j in staged))
+            if assets and staged_evidence(assets,data_root) and not cancel.exists():
+                previous={n:{k:j.get(k) for k in ('status','reason','result')} for n,j in staged}
+                result=dispatch(assets,staged[0][0],resume_staged=True)
+                plan.setdefault('target_batches',[]).append(result['report_path'])
+                for n,j in staged:
+                    r=result['results'].get(str(Path(j['target_asset']).resolve()),{})
+                    j.setdefault('recovery_history',[]).append(previous[n])
+                    for key in ('status','reason','collection_verified','completion_check','membership_evidence',
+                                'submission_state','file_submission','file_selection_step','staged_recovery_requires_confirmation'):
+                        if key in r:j[key]=r[key]
+                    if r.get('report_path'):j['result']=r['report_path']
+                save();pending=[(n,j) for n,j in pending if j['status'] not in DONE]
         # Unknown add/send boundaries are not authorization to move on to the
         # unsent tail. Resolve the interrupted group before another send.
-        if any(j.get('submission_state')=='may_have_started' for _,j in pending):
+        if any(j.get('submission_state')=='may_have_started' and not
+               j.get('staged_recovery_requires_confirmation') for _,j in pending):
             for _,j in pending:
                 if j.get('submission_state')=='may_have_started':
                     j.update(status='pending_confirmation',reason=j.get('reason') or '上次操作结果未知，未自动重发或重加')
             plan['run_state']='partial';save();return plan
+        # A positively observed missing old draft is isolated, not retried.
+        # The fresh tail still has to pass the live empty-composer guard.
+        pending=[(n,j) for n,j in pending if not j.get('staged_recovery_requires_confirmation')]
         for selected in [pending]:
             if cancel.exists():break
             proofs={}

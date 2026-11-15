@@ -33,9 +33,11 @@ class WeChatFrameMatcher(FrameMatcher):
         if plain[1]<.04:return plain
         backgrounds=[background]
         if self.has_alpha:
-            backgrounds.append((240,240,240))
-            light=super().__call__(crop,backgrounds[-1])
-            if light[1]<plain[1]:plain=light
+            for bg in ((240,240,240),(255,255,255)):
+                if bg in backgrounds:continue
+                backgrounds.append(bg)
+                light=super().__call__(crop,bg)
+                if light[1]<plain[1]:plain=light
         # The native Qt preview uses a different reduction filter. Repeated
         # spatial searches cannot fix that mismatch. Compare intact source
         # frames reduced directly with bilinear filtering; retain the .04 gate.
@@ -68,13 +70,58 @@ class WeChatFrameMatcher(FrameMatcher):
         index=int(np.argmin(errors));return (index if errors[index]<.04 else None),float(errors[index])
 
 
-def staged_matches(image,refs,matcher):
+def staged_surface_matches(image,refs,matcher,scale):
+    """Locate full previews whose white/transparent border blends into input.
+
+    Template scores propose coordinates only. Intact frames and local patches
+    prove them; never accept a foreground fragment or a blank white rectangle.
+    """
+    from .wechat_visual_bridge import load_cv2
+    from .recognition import rgb
+    cv2=load_cv2();actual=np.asarray(image.convert('RGB'))
+    background=tuple(int(v) for v in np.median(actual[:, :min(8,image.width)],axis=(0,1)))
+    backgrounds=list(dict.fromkeys([background,(240,240,240),(34,34,34)])) if matcher.has_alpha else [background]
+    proposals=[];ratio=refs[0].width/refs[0].height
+    edges=sorted({round(e*scale) for e in (120,100,80,72,60,48)}|{120,118,122})
+    for i in np.linspace(0,len(refs)-1,min(8,len(refs)),dtype=int):
+        for bg in backgrounds:
+            for edge in edges:
+                width,height=(edge,round(edge/ratio)) if ratio>=1 else (round(edge*ratio),edge)
+                if min(width,height)<12 or width>image.width or height>image.height:continue
+                ref=rgb(refs[i],bg).resize((width,height),Image.Resampling.LANCZOS)
+                template=np.asarray(ref)
+                if template.std()<3:continue
+                scores=cv2.matchTemplate(actual,template,cv2.TM_SQDIFF_NORMED)
+                for _ in range(4):
+                    low,_,point,_=cv2.minMaxLoc(scores)
+                    if low>.12:break
+                    x,y=point
+                    if not any(abs(x-p.x)<3 and abs(y-p.y)<3 and width==p.width and height==p.height for p in proposals):
+                        index,error=matcher(image.crop((x,y,x+width,y+height)),background)
+                        if index is not None and error<.04:proposals.append(Match(x,y,width,height,error))
+                    scores[max(0,y-8):y+9,max(0,x-8):x+9]=1
+    proposals,proof=distinguish_candidates(image,refs,proposals,backgrounds,always=True)
+    matcher.last_spatial_check=proof
+    proposals.sort(key=lambda h:h.error);found=[]
+    for hit in proposals:
+        if not any(abs(hit.center[0]-p.center[0])<12 and abs(hit.center[1]-p.center[1])<12 for p in found):found.append(hit)
+    return found
+
+
+def staged_matches(image,refs,matcher,scale=1):
     # Components only propose bounds. Full original frames prove the staged
     # object; disconnected transparent content must not be accepted by itself.
+    key=(image.mode,image.size,scale,image.tobytes())
+    cache=getattr(matcher,'staged_cache',None)
+    if cache is not None and cache[0]==key:return list(cache[1])
     hits=match_rows(image,[(('composer',),(0,0,*image.size))],refs,matcher)
-    found=[hit for _,hit in hits] if hits else find_media(image,refs,(120,118,122,100,80,72,60,48))
-    found,proof=distinguish_candidates(image,refs,found,((34,34,34),(240,240,240)))
+    found=[hit for _,hit in hits] if hits else []
+    if not found and isinstance(matcher,WeChatFrameMatcher):
+        found=staged_surface_matches(image,refs,matcher,scale)
+    if not found:found=find_media(image,refs,(120,118,122,100,80,72,60,48))
+    found,proof=distinguish_candidates(image,refs,found,((34,34,34),(240,240,240),(255,255,255)),always=True)
     if proof:matcher.last_spatial_check=proof
+    if image.width*image.height<=1024*1024:matcher.staged_cache=(key,list(found))
     return found
 
 
@@ -150,8 +197,13 @@ def viewport_media_rects(crop,components,matcher,scale):
         for width,height in sorted(sizes):
             if not (px(24)<=width<=px(240) and px(24)<=height<=px(240)):continue
             x=avatar[0]-px(14)-width;y=avatar[1]
-            if 0<=x<x+width<=crop.width and 0<=y<y+height<=crop.height:
-                yield x,y,x+width,y+height
+            # A rounded/transparent avatar's foreground contour can start a
+            # physical pixel inside its native box. Check bounded neighbours
+            # against intact media; never enlarge the pixel error threshold.
+            for dx,dy in ((0,0),(-1,0),(1,0),(0,-1),(0,1),(-1,-1),(-1,1),(1,-1),(1,1)):
+                left,top=x+dx,y+dy
+                if 0<=left<left+width<=crop.width and 0<=top<top+height<=crop.height:
+                    yield left,top,left+width,top+height
 
 
 def match_rows(frame,rows,refs,matcher,fallback=False,prepared_rows=None,scale=1):
@@ -195,7 +247,9 @@ def match_rows(frame,rows,refs,matcher,fallback=False,prepared_rows=None,scale=1
                         found.append(Match(x,y,right-x,bottom-y,error))
         if fallback and not found and getattr(matcher,'batch_geometry_only',False) is not True:
             found=find_media(crop,refs,tuple(e for e in (200,180,160,144,140,136,132,128,120,100,80,72) if e<=max(crop.size)))
-        for h in found:
+        # Several adjacent geometry proposals may pass on sparse artwork.
+        # Prefer the best intact-pixel match before merging nearby centres.
+        for h in sorted(found,key=lambda h:h.error):
             absolute=Match(h.x+rect[0],h.y+rect[1],h.width,h.height,h.error)
             if not any(abs(absolute.center[0]-old[1].center[0])<8 and abs(absolute.center[1]-old[1].center[1])<8 for old in hits):
                 hits.append((ident,absolute))

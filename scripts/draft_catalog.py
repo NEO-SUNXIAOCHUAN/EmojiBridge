@@ -29,6 +29,16 @@ def remove(root,ident):
     # Scenes can be referenced by exported materials. Never delete their assets.
     save_json(folder/'deleted.json',{'deleted':True,'reason':'user_removed_from_drafts'})
 
+
+def remove_many(root,idents):
+    if not isinstance(idents,list):raise ValueError('请选择要删除的草稿')
+    # Validate the entire selection before marking any draft as removed.
+    for ident in idents:
+        if not (directory(root,ident)/'scene.json').is_file():raise ValueError('草稿不存在')
+    unique=list(dict.fromkeys(idents))
+    for ident in unique:remove(root,ident)
+    return unique
+
 def resolve(root,ident):
     folder=directory(root,ident)
     if (folder/'deleted.json').exists() or not (folder/'scene.json').is_file():raise ValueError('草稿已删除或不存在')

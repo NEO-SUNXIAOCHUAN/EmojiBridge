@@ -164,7 +164,7 @@ def find_in_cells(image,refs,cells,matcher=None,*,pixel_tolerance=0):
     return hits
 
 
-def distinguish_candidates(image, refs, hits, backgrounds=((34,34,34),)):
+def distinguish_candidates(image, refs, hits, backgrounds=((34,34,34),), *, always=False):
     """Reject locally different artwork hidden by a low whole-image mean.
 
     Only refines ambiguous, geometrically proven cells. All pixels and all
@@ -172,7 +172,7 @@ def distinguish_candidates(image, refs, hits, backgrounds=((34,34,34),)):
     matching covers (including distinct GIFs with the same first frame) remain
     ambiguous. This is a visual membership check, never a content digest.
     """
-    if len(hits)<2:return hits,[]
+    if len(hits)<2 and not always:return hits,[]
     accepted=[];evidence=[]
     for hit in hits:
         actual=np.asarray(image.crop((hit.x,hit.y,hit.x+hit.width,hit.y+hit.height)).convert('RGB'),dtype=float)[1:-1,1:-1]

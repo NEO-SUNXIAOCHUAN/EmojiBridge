@@ -25,7 +25,7 @@ def staged_identity(q,runners,snap):
         raise StopAutomation('composer_not_expected_media_batch')
     rect=relative(snap['input'],q.window);image=q.frame().crop(rect);hits=[]
     for runner in runners:
-        found=staged_matches(image,runner.refs,runner.matcher)
+        found=staged_matches(image,runner.refs,runner.matcher,scale=client_scale(q.window.dpi))
         runner.report['staged_candidates']=len(found)
         if getattr(runner.matcher,'last_spatial_check',None):runner.report['candidate_spatial_check']=runner.matcher.last_spatial_check
         if len(found)!=1:raise StopAutomation('staged_batch_item_not_unique')

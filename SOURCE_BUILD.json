@@ -1,5 +1,5 @@
 {
-  "source_commit": "a9bf49ba441a8f720da2881e27f40c99dd81d5a1",
+  "source_commit": "c38d554fd6ca8f319ca63158b873c7b5e66b35e6",
   "history_included": false,
   "publication_ready": false,
   "rights_review": "RELEASE_RIGHTS.md",
@@ -46,13 +46,13 @@
     },
     {
       "path": "assets/desktop/main.css",
-      "sha256": "e1127fcb6c4b0c1f0bbce4ce0e1ebabb591f54b53433fb545634d759a061c357",
-      "bytes": 52978
+      "sha256": "aa5baaa73023a9c128bb2b39e24b3dc70cd9e3228a0d797b37a9800fa6262df4",
+      "bytes": 53507
     },
     {
       "path": "assets/desktop/main.js",
-      "sha256": "4635cb89dc296bfc2725cb6c1b64d47797128c1f734df5da02482485c701d160",
-      "bytes": 725034
+      "sha256": "ce247f46b76eb8a9a8337e2c150f66e0e7d0671d79ef3ea6685c24b80af2febc",
+      "bytes": 726832
     },
     {
       "path": "assets/desktop/pocket.css",
@@ -4831,18 +4831,18 @@
     },
     {
       "path": "desktop-ui/src/transfer-stage.jsx",
-      "sha256": "90860e6b4f156aa803a24fd34496133c6de728f8cc7152f3596c8050988f492d",
-      "bytes": 4473
+      "sha256": "b9744009c7af43ca72f17fac7faf458992d2e389a6578d83fe6840c35296c7a6",
+      "bytes": 4668
     },
     {
       "path": "desktop-ui/src/workspace.css",
-      "sha256": "06e25f79b3af5473af10bc564544952e7e3f88864dd6a16689fcfd9927037cab",
-      "bytes": 19206
+      "sha256": "526668d39db8a60d09ffcce05f45c934fd38775492c91b2de58e0bad1fe618db",
+      "bytes": 19743
     },
     {
       "path": "desktop-ui/src/workspaces.jsx",
-      "sha256": "2106251ea87f33c74bb1e316b6860666ba526bb7a4161c4269f9844b7c382c95",
-      "bytes": 14586
+      "sha256": "0f56c983022ac16c5a539e4475ac397069a4280e812a89253ffa40fa0e762256",
+      "bytes": 15972
     },
     {
       "path": "desktop-ui/src/xp-v9/INTEGRATION.md",
@@ -4911,8 +4911,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "9ee6fcd7200ced62988f47142de38de39db8fec8c69dbaa6d009270694f69fb8",
-      "bytes": 4038
+      "sha256": "7425f596329cff033b2bfdf1b03754c0af8a17bbcf2a95349aa2449da5da98cd",
+      "bytes": 4602
     },
     {
       "path": "RELEASE_COMPONENTS.json",
@@ -4921,8 +4921,8 @@
     },
     {
       "path": "RELEASE_NOTES.md",
-      "sha256": "571808afa20df8a87b10a7e7740d8335001e2738702025f7fb4128a5852dd175",
-      "bytes": 10190
+      "sha256": "0e6c3b7cf25bb43d7b4b2878643f3f50106cfa8bd3744087af5e5e62f786b850",
+      "bytes": 11583
     },
     {
       "path": "RELEASE_RIGHTS.md",
@@ -5036,8 +5036,8 @@
     },
     {
       "path": "scripts/desktop_service.py",
-      "sha256": "4453d2a077f522faf0b7b678d18a9c62b87b9b7f49e95f8717ad66dba01d7632",
-      "bytes": 65850
+      "sha256": "9503c7f1ddc9080e89e2e506885e677ef790c8c4e1e08500b7a3bfe3c7467b45",
+      "bytes": 65908
     },
     {
       "path": "scripts/desktop_shell.py",
@@ -5061,8 +5061,8 @@
     },
     {
       "path": "scripts/draft_catalog.py",
-      "sha256": "6913cdd2f6c49e48d8eab4fcdf8316b22dc81fccae90e9b6b3bd1494d1fdaf69",
-      "bytes": 2285
+      "sha256": "64fec85733a47263819511e9655e2e03f3ce50e3fcf2687c883c6dbb5935bb9d",
+      "bytes": 2696
     },
     {
       "path": "scripts/dropped_item_ui.py",
@@ -5126,8 +5126,8 @@
     },
     {
       "path": "scripts/export_public_source.py",
-      "sha256": "5a8aec36379a0393b685716f4a0b26a0a0527fb6507201e2a6a694f8d1d40837",
-      "bytes": 4330
+      "sha256": "c8b0d13696ab85335522684f6c4027857e92ad010ed0b120bd873a90a5bd913f",
+      "bytes": 4473
     },
     {
       "path": "scripts/factory_animation_input.py",
@@ -5186,8 +5186,8 @@
     },
     {
       "path": "scripts/layout_editor.py",
-      "sha256": "8b5212023d2ae42e2fa4a7760765bc92df2d33a7f32037aad7e49a6a28186e40",
-      "bytes": 107822
+      "sha256": "cc074cf6e0e5f0c8fe3ef7f02382fc895cea2448be9cb02da0da32b0585f6dff",
+      "bytes": 108620
     },
     {
       "path": "scripts/local_bridge.py",
@@ -5273,6 +5273,11 @@
       "path": "scripts/package_release_S0174.py",
       "sha256": "6373c2e9a38517149586f6c58bb33a254a8caeb45e6551ebc33cd0afc1bc04f3",
       "bytes": 8519
+    },
+    {
+      "path": "scripts/package_release_S0175.py",
+      "sha256": "0b7d106cac738243bcc6d6b6956bd45418c12c707f8b4211ae916583dc8ca59d",
+      "bytes": 8415
     },
     {
       "path": "scripts/package_startup_recovery_S0170.py",
@@ -5616,13 +5621,13 @@
     },
     {
       "path": "scripts/wechat_batch.py",
-      "sha256": "73d1f425f6a4635c07f1999dbbd7e9aea0c8be80f06f25292e72e7a52645f82e",
-      "bytes": 43777
+      "sha256": "046f65ddd913cda98e2c415c0482560ddbaf1ce1692a8056f0af55cce4cec6d7",
+      "bytes": 43810
     },
     {
       "path": "scripts/wechat_batch_workflow.py",
-      "sha256": "f9eda000c2d706787f0e2180f00b3e023eb79c2183dd4b0b239ea366c38cc2e7",
-      "bytes": 12791
+      "sha256": "3df56acab4b81e450fc3195bd3945d4ce5fcc8134919684fa57f3d06ccf453ef",
+      "bytes": 14796
     },
     {
       "path": "scripts/wechat_catalog.py",
@@ -5786,8 +5791,8 @@
     },
     {
       "path": "src/emoji_bridge/desktop_stickers.py",
-      "sha256": "97cf27c0289d95a65f68bab75824502006643ea43c4f7020b60a70acd9efef7d",
-      "bytes": 22693
+      "sha256": "b701c20ec812d720feae4ca32d7ecfbd65eeb1de8da1482af606ca8a9c621c40",
+      "bytes": 23714
     },
     {
       "path": "src/emoji_bridge/dither_atkinson.py",
@@ -5886,8 +5891,8 @@
     },
     {
       "path": "src/emoji_bridge/message_media.py",
-      "sha256": "558c4be8ac83a69137e73c27d1cea731fcaa09f3bd68a2ce998ed96f45485083",
-      "bytes": 13284
+      "sha256": "379f215c97a1ac478ec4698072bc03d58e21570904ced7236dfca5fdb8b70ffa",
+      "bytes": 16589
     },
     {
       "path": "src/emoji_bridge/offline_components.py",
@@ -5981,8 +5986,8 @@
     },
     {
       "path": "src/emoji_bridge/recognition.py",
-      "sha256": "abd2a326990c7298e9f35cf997693db71a124e1cca2cbff0d0df87070935d4fe",
-      "bytes": 12607
+      "sha256": "52ce85ea41706b6d09629d4bd562c273baece5504781f571468b90e906c241b5",
+      "bytes": 12639
     },
     {
       "path": "src/emoji_bridge/release_components.py",
@@ -6156,13 +6161,13 @@
     },
     {
       "path": "src/emoji_bridge/wechat_visual.py",
-      "sha256": "ba1e31d835d8fc4d800d2866486a5a214a76d2b8a47d1c0f71fb9742f515db99",
-      "bytes": 24894
+      "sha256": "e0f71ddceb09332b8610742b71222b0b5e4133850fa72b01db9323e31562671a",
+      "bytes": 25037
     },
     {
       "path": "src/emoji_bridge/wechat_visual_bridge.py",
-      "sha256": "cd738570dccb9b5a9747527d21ed2bd51ea28b253308b3b67f17bfd9fa8a8461",
-      "bytes": 30105
+      "sha256": "5e5e169a7cd85b3860c0be06a6c2e8b8b5d0332bf36a458cbf5b2e885deb06f9",
+      "bytes": 32729
     },
     {
       "path": "src/emoji_bridge/window_handoff.py",
@@ -6190,14 +6195,29 @@
       "bytes": 2450
     },
     {
+      "path": "tests/test_creation_controls_S0175.py",
+      "sha256": "c5897d1b8aa317709e2c630b9e1167d695ce61ebad20383e6b475ebd99ac0cb0",
+      "bytes": 5799
+    },
+    {
       "path": "tests/test_download_startup_S0168.py",
       "sha256": "56e2bb56d70d80e73f2fd1cc38280c09b66246f8157c045ccbbb7327eaa7488e",
       "bytes": 2263
     },
     {
+      "path": "tests/test_qq_staged_S0175.py",
+      "sha256": "9d557107b13fab86b83b55aabaa30c16e9d59b4c8580f3621e32e39415509e05",
+      "bytes": 2843
+    },
+    {
       "path": "tests/test_release_paths_S0174.py",
       "sha256": "d991d0ce4228eda743c83ee5bdb4c816b9dd5550f42d5cf512cdd4833da8d8eb",
       "bytes": 8995
+    },
+    {
+      "path": "tests/test_visual_white_S0175.py",
+      "sha256": "d121b886f29d0effac826b317bc6ade6e4787a7230798b2a42f9f5aca73b284b",
+      "bytes": 4347
     },
     {
       "path": "third_party/cutout/anime-segmentation-LICENSE.txt",

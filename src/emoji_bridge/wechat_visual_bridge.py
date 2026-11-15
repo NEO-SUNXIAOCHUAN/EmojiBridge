@@ -40,7 +40,7 @@ def media_proof(image, layout, runners, scale):
     hits = []
     for runner in runners:
         runner.cancelled()
-        found = staged_matches(crop, runner.refs, runner.matcher)
+        found = staged_matches(crop, runner.refs, runner.matcher, scale=scale)
         if len(found) != 1:
             raise StopAutomation('staged_batch_item_not_unique')
         hit = found[0]
@@ -191,6 +191,10 @@ class VisualBridge:
             for line in result['lines']:
                 words=[{'text':word['text'],'rect':[v+offset for v,offset in zip(word['rect'],sidebar[:2]*2)]} for word in line['words']]
                 lines.append({'text':line['text'],'words':words})
+        if not any(rect[0]>divider for rect in helper_labels({'ok':True,'lines':lines})):
+            rect=regions[0]
+            if self.label_matches(image.crop(rect),'文件传输助手'):
+                lines.append({'text':'文件传输助手','words':[{'text':'文件传输助手','rect':list(rect)}]})
         return {'ok': True, 'lines': lines}
 
     def absolute(self, rect, window=None):
@@ -342,7 +346,27 @@ class VisualBridge:
                 continue
             screen=ImageGrab.grab(bbox=pop.rect,all_screens=True).convert('RGB')
             region=screen.crop((0,0,screen.width,min(screen.height,round(160*scale))))
-            result=self.read_ocr(region)
+            # Native OCR drops the small grey “功能” heading on light themes.
+            # Preserve geometry, normalize foreground contrast, and enlarge
+            # before reading. Still require the exact function section, title
+            # and folder-arrow icon; contact/history names remain excluded.
+            pixels=np.asarray(region,dtype=np.int16)
+            background=np.median(pixels,axis=(0,1))
+            ink=np.abs(pixels-background).max(axis=2)>25
+            normalized=Image.fromarray(np.where(ink,0,255).astype('uint8')).convert('RGB')
+            result=self.read_ocr(normalized.resize((region.width*2,region.height*2)))
+            result={'ok':result.get('ok'),'lines':[
+                {'text':line['text'],'words':[dict(word,rect=[v/2 for v in word['rect']]) for word in line['words']]}
+                for line in result.get('lines',[])]}
+            if not helper_labels(result):
+                # Thresholding can confuse a dense title glyph. Use the
+                # original colour read for titles and keep the proven grey
+                # section headings from the contrast read.
+                raw=self.read_ocr(region)
+                headings={'功能','联系人','群聊','聊天记录','收藏'}
+                result={'ok':raw.get('ok'),'lines':[
+                    line for line in result['lines'] if ''.join(line['text'].split()) in headings]+[
+                    line for line in raw.get('lines',[]) if ''.join(line['text'].split()) not in headings]}
             try:target=helper_function(screen,result,scale,self.cv2)
             except StopAutomation as exc:
                 if str(exc)!='own_transfer_search_result_unsupported':raise
@@ -522,8 +546,19 @@ class VisualBridge:
                 if self.menu_label_matches(surface_image.crop(rect).convert('L').convert('RGB')):
                     labels.append(('添加到表情', tuple(v+o for v,o in zip(rect,surface[:2]*2))))
         else:
-            labels = [(text,tuple(v+offset for v,offset in zip(rect,surface[:2]*2)))
-                      for text,rect in ocr_lines(self.read_ocr(surface_image))]
+            # Animated spinners change every capture while the status text
+            # stays still. Recognize observed text bands, whose exact pixels
+            # can be reused; unknown labels still use the full OCR fallback.
+            labels=[]
+            status_labels={'添加失败','表情添加失败','添加失败，请重试',
+                           '表情添加失败，请稍后再试','正在添加','正在添加…','已添加','我知道了'}
+            for rect in menu_text_rows(surface_image):
+                text,confidence=self.label_read(surface_image.crop(rect))
+                if confidence>=.98 and text in status_labels:
+                    labels.append((text,tuple(v+offset for v,offset in zip(rect,surface[:2]*2))))
+            if not any(text!='我知道了' for text,_ in labels):
+                labels = [(text,tuple(v+offset for v,offset in zip(rect,surface[:2]*2)))
+                          for text,rect in ocr_lines(self.read_ocr(surface_image))]
         if action == 'import-status' and pid_of(window.hwnd) == 0:
             # A short-lived toast may disappear during read-only OCR. Do not
             # reuse its coordinates or infer success; re-enumerate next loop.
