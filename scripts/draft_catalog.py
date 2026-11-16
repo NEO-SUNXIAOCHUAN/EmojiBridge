@@ -24,6 +24,10 @@ def listing(root):
     return sorted(rows,key=lambda r:(-r['updated'],r['id']))
 
 def remove(root,ident):
+    from emoji_bridge.library_gate import hold
+    with hold(root):return _remove(root,ident)
+
+def _remove(root,ident):
     folder=directory(root,ident)
     if not (folder/'scene.json').is_file():raise ValueError('草稿不存在')
     # Scenes can be referenced by exported materials. Never delete their assets.

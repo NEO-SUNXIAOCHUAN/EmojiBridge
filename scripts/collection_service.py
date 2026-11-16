@@ -18,6 +18,18 @@ class Collections:
         self.reads={}
         self.rows_stamp=None;self.rows_cache=[];self.ready_counts={}
         self.enrichment_paused=set()
+        self.monitor_stop=threading.Event()
+
+    def start_monitor(self):
+        if getattr(self,'monitor',None):return
+        def run():
+            while not self.monitor_stop.is_set():
+                try:self.tick()
+                except (OSError,ValueError,KeyError) as exc:
+                    with self.guard:self.states['qq']={'failed':True,'text':'缓存读取暂不可用：'+str(exc)}
+                self.monitor_stop.wait(2)
+        self.monitor=threading.Thread(target=run,daemon=True,name='cache-directory-monitor')
+        self.monitor.start()
 
     def context(self):
         pointer=self.base/'last-profile.json'
@@ -168,59 +180,39 @@ class Collections:
                     'discovery':discovery,
                     'task':dict(self.active or {}),'states':dict(self.states),'imported_items':list(dict.fromkeys(imported))}
 
-    def check_changes(self,choice):
-        if self.closed or self.transfer_paused:return
-        for client,key in (('wechat','wechat_emoticon_db'),('qq','qq_ori')):
-            value=choice.get(key)
-            if not value:continue
-            file=Path(value);files=[file,Path(value+'-wal')] if client=='wechat' else [file]
-            stamp=tuple((f.stat().st_size,f.stat().st_mtime_ns) if f.exists() else None for f in files)
-            previous=self.stamps.get(client);self.stamps[client]=stamp
-            if previous!=stamp:
-                self.retry.pop(client,None)
-                if client=='qq':self.visible_signature=None
-            if client=='qq':
-                visible_context=self.qq_visible_context()
-                if visible_context!=getattr(self,'last_qq_context',None):
-                    self.last_qq_context=visible_context
-                    if visible_context and not self.retry.get(client,{}).get('cancelled'):
-                        self.retry.pop(client,None);self.checked.pop(client,None);self.visible_signature=None
-            now=time.monotonic();retry=self.retry.get(client,{})
-            if retry.get('count',0)>=3 and previous==stamp:continue
-            if now<retry.get('after',0):continue
-            if client=='wechat':
-                if previous!=stamp or retry:self.request(client,'refresh',manual=False)
-            elif now-self.checked.get(client,0)>=8:
-                if self.can_observe_qq():self.request(client,'refresh',manual=False)
-                elif not self.states.get(client,{}).get('active') and (previous!=stamp or not self.states.get(client)):
-                    self.states[client]={'text':'打开 QQ → 表情 → 我的收藏首屏，可自动检查；点“更新”可完整读取。缓存文件不算收藏。','needs_update':True}
-
-    @staticmethod
-    def qq_visible_context():
-        # Tiny focus/identity gate; never activates a client. Semantic panel
-        # checks run in the existing cancellable worker.
-        from emoji_bridge.windows import user,pid_of,process_path
-        foreground=user.GetForegroundWindow()
-        try:
-            pid=pid_of(foreground) if foreground else None
-            return (foreground,pid) if pid and process_path(pid).name.casefold()=='qq.exe' else None
-        except (OSError,ValueError):return None
-
-    @classmethod
-    def can_observe_qq(cls):return bool(cls.qq_visible_context())
+    def cache_options(self,enabled=None):
+        return {'automatic':False,'trigger':'manual','source':'cache'}
 
     def tick(self):
         with self.guard:
-            if self.closed:return
+            if self.closed or getattr(self,'monitor_suspended',False):return
             context=self.context();self.settle()
-            # S0122: collection reads are explicit. Polling only settles tasks.
+            if not context:return
+            profile,choice=context
+            self.check_changes(choice)
+
+    def check_changes(self,choice):
+        if self.closed or getattr(self,'monitor_suspended',False):return
+        now=time.monotonic()
+        value=choice.get('wechat_emoticon_db')
+        if value and not self.transfer_paused:
+            files=[Path(value),Path(str(value)+'-wal')]
+            stamp=tuple((f.stat().st_size,f.stat().st_mtime_ns) if f.exists() else None for f in files)
+            previous=self.stamps.get('wechat');self.stamps['wechat']=stamp
+            if previous!=stamp:self.retry.pop('wechat',None)
+            retry=self.retry.get('wechat',{})
+            if retry.get('count',0)<3 and now>=retry.get('after',0) and (previous!=stamp or retry):
+                self.request('wechat','refresh',manual=False)
+        # QQ still reads the whole local cache, but only on an explicit update.
+        # Do not rescan on a timer, page navigation, tray wake or retry backoff.
 
     def request(self,client,action='refresh',ids=(),manual=True,retry=False,priority=False):
         if client not in ('qq','wechat') or action not in ('refresh','import','previews','enrich'):raise ValueError('未知收藏操作')
+        if client=='qq' and action=='refresh' and not manual:return False
         if action=='enrich' and (not ids or len(ids)>18):raise ValueError('清晰预览每批最多18项')
         self.rows_stamp=None
         with self.guard:
-            if self.transfer_paused:return False
+            if self.transfer_paused and (client,action)!=('qq','refresh'):return False
             if not self.context():raise ValueError('请先选择本人账号')
             if action=='enrich':
                 if retry:self.enrichment_paused.discard(client)
@@ -276,7 +268,7 @@ class Collections:
         save_json(self.profile/'runtime-data/T005/refresh-status.json',self.reads)
         if cancelled and yielded:
             self.retry.pop(client,None);self.checked[client]=time.monotonic()
-        elif cancelled:self.retry[client]={'count':3,'after':0,'cancelled':True}
+        elif cancelled:self.retry[client]={'count':0,'after':time.monotonic()+15}
         elif state.get('deferred'):
             # A real client owner is not a failed read. Yield without spending
             # the three-error retry budget or updating the successful snapshot.
@@ -338,8 +330,9 @@ class Collections:
                     save_json(job['request'],job);self.pending[(job['client'],'enrich')]=job
             self.rows_stamp=None  # Original/preview completion changes readiness.
             self.active=None
-        if self.pending and not self.closed and not self.transfer_paused:
-            key=next((k for k,j in self.pending.items() if j.get('priority')),next((k for k,j in self.pending.items() if j.get('manual')),next(iter(self.pending))));job=self.pending.pop(key);self.active=job
+        eligible={k:j for k,j in self.pending.items() if not self.transfer_paused or k==('qq','refresh')}
+        if eligible and not self.closed:
+            key=next((k for k,j in eligible.items() if j.get('priority')),next((k for k,j in eligible.items() if j.get('manual')),next(iter(eligible))));job=self.pending.pop(key);self.active=job
             try:
                 self.process=subprocess.Popen([sys.executable,'-X','utf8',str(APP/'scripts/collection_worker.py'),job['request']],
                              stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
@@ -356,8 +349,10 @@ class Collections:
                 self.active['user_cancelled']=True
                 Path(self.active['cancel']).touch()
             self.states[client]={'text':'已请求取消；完成项保留。'}
-            self.retry[client]={'count':3,'after':0,'cancelled':True}
+            self.retry[client]={'count':0,'after':time.monotonic()+15}
 
     def close(self):
-        self.closed=True;self.pending.clear()
-        if self.active:Path(self.active['cancel']).touch()
+        self.monitor_stop.set()
+        with self.guard:
+            self.closed=True;self.pending.clear()
+            if self.active:Path(self.active['cancel']).touch()

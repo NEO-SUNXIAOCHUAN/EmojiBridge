@@ -4,6 +4,8 @@ require('esbuild').buildSync({entryPoints:[path.join(__dirname,'src/main.jsx')],
 fs.writeFileSync(path.join(out,'index.html'),'<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>EmojiBridge</title><link rel="stylesheet" href="/main.css"><div id="root"></div><script src="/main.js"></script></html>');
 require('esbuild').buildSync({entryPoints:[path.join(__dirname,'src/pocket-entry.js')],bundle:true,minify:true,outfile:path.join(out,'pocket.js'),target:'chrome110',legalComments:'eof'});
 for(const name of ['pocket','edge'])fs.writeFileSync(path.join(out,name+'.html'),'<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>EmojiBridge 随手素材</title><link rel="stylesheet" href="/pocket.css"><div id="root"></div><script src="/pocket.js"></script></html>');
+require('esbuild').buildSync({entryPoints:[path.join(__dirname,'src/overlay.jsx')],bundle:true,minify:true,outfile:path.join(out,'overlay.js'),target:'chrome110',jsx:'automatic',legalComments:'eof'});
+fs.writeFileSync(path.join(out,'overlay.html'),'<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>EmojiBridge 桌面工具</title><link rel="stylesheet" href="/overlay.css"><div id="root"></div><script src="/overlay.js"></script></html>');
 // Distribute actual dependency notices beside the bundle, including transitive code.
 const licenses=[];const seen=new Set();
 function collect(dir){let info;try{info=JSON.parse(fs.readFileSync(path.join(dir,'package.json')))}catch{return}

@@ -1,5 +1,6 @@
 """A captured account context; reuses current read/import workflows, never submits media."""
 import hashlib,json,os,sys,time
+from contextlib import nullcontext
 from pathlib import Path
 APP=Path(__file__).resolve().parents[1];sys.path[:0]=[str(APP/'src'),str(APP/'scripts')]
 
@@ -20,10 +21,78 @@ def run(request):
         save_json(status,{'active':True,'text':stage,'completed':n,'total':total})
     def waiting(owner):
         if owner:save_json(status,{'active':True,'text':waiting_text(owner),'waiting_for':owner})
+    # Published catalogs are atomic snapshots. Copying already available files
+    # is read-only: never take the scanner's write lock or save a stale snapshot.
+    if request['action']=='copy':
+        from collection_files import local_original
+        library=catalog.read(catalog.PATH)
+        item=next((i for i in library['clients'][client]['items'] if i['id']==request['ids'][0]),None)
+        if not item:raise ValueError('读取条目已变化，请重新选择')
+        available=local_original(client,item,profile,cancel)
+        if available:
+            file,digest,source=available
+            return dict(file=str(file),sha256=digest,text='复制文件已准备')
     started=time.perf_counter()
     kind=('更新' if request['action']=='refresh' else '原件入库' if request['action']=='import' else '本地预览')+(' QQ 收藏' if client=='qq' else '微信收藏')
-    with task_scope(Path(request.get('request',request['status'])).parent.name,kind,cancel=cancel.exists,on_wait=waiting if request.get('manual') else None),single_instance(profile/'runtime-data/T005/collection.lock'):
-        catalog.bootstrap()
+    cache_read=client=='qq' and request['action']=='refresh'
+    lock=profile/'runtime-data/T005/collection.lock'
+    with task_scope(Path(request.get('request',request['status'])).parent.name,kind,cancel=cancel.exists,on_wait=waiting if request.get('manual') else None), (nullcontext() if cache_read else single_instance(lock)):
+        with single_instance(lock) if cache_read else nullcontext():catalog.bootstrap()
+        if request['action']=='copy':
+            from collection_files import original
+            library=catalog.read(catalog.PATH)
+            item=next((i for i in library['clients'][client]['items'] if i['id']==request['ids'][0]),None)
+            if not item:raise ValueError('读取条目已变化，请重新选择')
+            file,digest,source=original(client,item,library,profile,cancel)
+            catalog.save(library)
+            return dict(file=str(file),sha256=digest,text='复制文件已准备')
+        if client=='qq' and request['action']=='refresh':
+            from emoji_bridge.cache_listing import scan,catalog_side
+            root=choice.get('qq_ori')
+            if not root:raise ValueError('请先选择 QQ 个人表情缓存目录')
+            index=scan(root,profile/'runtime-data/cache-read/qq.json',cancel=cancel.exists,
+                progress=lambda n,t,c:progress(n,t,f'读取本地缓存 {n}/{t} · 完整 {c["ready"]} · 失败 {c["failed"]} · 等待稳定 {c["waiting"]}'))
+            with single_instance(lock):
+                library=catalog.read(catalog.PATH)
+                previous=library['clients'].get('qq',{})
+                if previous and previous.get('source_kind')!='personal_cache_directory':
+                    archive=profile/'runtime-data/T005/legacy-qq-before-cache.json'
+                    if not archive.exists():save_json(archive,previous)
+                library['clients']['qq']=catalog_side(index)
+                catalog.save(library)
+            count=len(library['clients']['qq']['items']);counts=index['counts']
+            return dict(text=f'本地缓存 {count} 项；未加入素材库。失败 {counts["failed"]}，等待稳定 {counts["waiting"]}。',
+                read_succeeded=index['state']=='complete',count=count,counts=counts,
+                coverage='整个所选缓存目录',report=str(profile/'runtime-data/cache-read/qq.json'),seconds=time.perf_counter()-started)
+        if request['action']=='import':
+            from collection_files import original
+            from client_material_import import Cancel
+            store=MaterialStore(request['store']);library=catalog.read(catalog.PATH)
+            known={i['id']:i for i in library['clients'][client]['items']}
+            requested=list(dict.fromkeys(request['ids']))
+            if not requested or not set(requested)<=known.keys():raise ValueError('请重新选择当前列表中的表情')
+            plan_path=Path(request['plan']).resolve()
+            if not plan_path.is_relative_to(profile/'runtime-data/T005'):raise ValueError('入库记录路径无效')
+            plan=catalog.read(plan_path) if plan_path.exists() else {'jobs':[]}
+            completed={j['item_id'] for j in plan['jobs'] if j.get('material_id')}
+            for n,ident in enumerate(requested):
+                if cancel.exists():break
+                if ident in completed:continue
+                item=known[ident];job={'item_id':ident}
+                try:
+                    file,digest,source=original(client,item,library,profile,cancel)
+                    material,duplicate=store.import_file(file,kind=client,name=item.get('label'),
+                        source=json.dumps(source,ensure_ascii=False,sort_keys=True),expected_sha=digest,cancel=Cancel(cancel))
+                    job.update(material_id=material['id'],status='restored' if material.get('restored') else 'existing' if duplicate else 'added')
+                except InterruptedError:break
+                except (OSError,ValueError) as exc:job.update(status='failed',reason=str(exc))
+                plan['jobs']=[j for j in plan['jobs'] if j['item_id']!=ident]+[job]
+                save_json(plan_path,plan);catalog.save(library)
+                progress(n+1,len(requested),'仅将选中项加入素材库')
+            items=[j['material_id'] for j in plan['jobs'] if j.get('material_id')]
+            return dict(text=f'已处理选中项 {len(plan["jobs"])} / {len(requested)}；未操作客户端。',items=items,
+                        failed=any(j.get('status')=='failed' for j in plan['jobs']))
+        if client=='qq':return {'text':'本地缓存预览已准备；无需来源窗口操作。'}
         if request['action']=='enrich':
             from collection_enrich import enrich
             return enrich(catalog.PATH,client,request['ids'],cancel,progress,priority_file=Path(request['request']).with_name('priority.json'))
@@ -33,52 +102,13 @@ def run(request):
             progress(stage='加载当前页预览；原件状态不变')
             value=PreviewReader().load(catalog.PATH,request['ids'][:18],cancel,repair_ids=request['ids'][:18] if request.get('retry') else (),update_catalog=False)
             return {'text':'当前页预览已检查；原件在入库时取得。'}
-        if request['action']=='import':
-            from client_material_import import create,run as import_run,summary
-            store=MaterialStore(request['store']);plan=Path(request['plan']).resolve()
-            if not plan.is_relative_to(profile/'runtime-data/T005'):raise ValueError('入库记录不属于当前账号')
-            if not plan.exists():create(catalog.read(catalog.PATH),client,request['ids'],plan,{'acquire':True})
-            value=import_run(plan,catalog.PATH,store,cancel,progress=progress)
-            return {'text':summary(value),'counts':value['counts'],'items':[j['material_id'] for j in value['jobs'] if j.get('material_id')],
-                    'failed':bool(value['counts'].get('failed') or value['counts'].get('waiting') or value['counts'].get('queued')),'seconds':time.perf_counter()-started}
-        if client=='wechat':
-            from wechat_prepare import prepare
-            result=prepare(catalog.PATH,cancel,lambda n,t:progress(n,t,'读取已认证微信索引'),index_only=True,preview_first=False)
-            if result['status']!='index_ready':raise ValueError(result.get('reason','微信索引未就绪'))
-        else:
-            from qq_catalog import scan,MAX_SCAN_VIEWS
-            if request.get('manual'):
-                progress(stage='打开 QQ 收藏并读取视图（不发送）')
-                path,result=scan(MAX_SCAN_VIEWS,cancel,progress=lambda p,r:progress(len(r['items']),0,f'已读 {len(r["pages"])} 个收藏视图'))
-            else:
-                from qq_catalog import scan_visible
-                progress(stage='检查 QQ 已打开的收藏首屏；不切窗口')
-                try:path,result=scan_visible(cancel,request.get('visible_signature'))
-                except Exception as exc:
-                    if str(exc) not in ('qq_background_update_needs_visible_favorites','qq_background_update_needs_first_view',
-                                         'foreground_changed','window_not_visible','qq_uia_personal_favorites_not_open','qq_uia_favorites_loading_timeout'):
-                        raise
-                    return {'needs_update':True,'text':'QQ 自动检查未取得新视图。请打开 QQ → 表情 → 我的收藏首屏；或点“更新”完整读取。',
-                            'reason':str(exc),'seconds':time.perf_counter()-started}
-                if result.get('unchanged'):return {'text':'QQ 已打开收藏首屏未变化；不代表云端全库。','visible_signature':result['visible_signature'],
-                                                  'read_succeeded':True,'coverage':'当前已打开收藏首屏'}
-            if cancel.exists():raise InterruptedError('已取消更新，保留上次读取结果')
-            library=catalog.read(catalog.PATH)
-            catalog.merge_qq(library,path,cancel=cancel.exists,match_originals=False,
-                             progress=lambda n,t:progress(n,t,'整理已读收藏；原件按所选项校验'))
-            catalog.save(library)
-            if not result.get('items'):raise ValueError(result.get('reason','未读到收藏，保留旧数据'))
-        side=catalog.read(catalog.PATH)['clients'][client]
-        text=f'已读取 {len(side["items"])} 项；仅此账号的本地读取范围。'
-        if client=='qq':text+=' 原件按当前页或所选项补齐，可直接选择互通。'
-        if client=='qq' and not request.get('manual'):
-            text=f'已检查收藏首屏；QQ 当前加载 {result.get("loaded_favorite_controls",0)} 条。其他位置请点“更新”补读。'
-        return {'text':text,'seconds':time.perf_counter()-started,
-                'read_succeeded':True,'coverage':('当前已打开收藏首屏' if client=='qq' and not request.get('manual') else side.get('scope')),
-                'visible_signature':result.get('visible_signature'),
-                'snapshot_at':side.get('snapshot_at'),
-                'count':len(result['items']) if client=='qq' and not request.get('manual') else len(side['items']),
-                'report':str(path) if client=='qq' else side.get('source_report')}
+        from wechat_prepare import prepare
+        result=prepare(catalog.PATH,cancel,lambda n,t:progress(n,t,'读取已认证微信索引'),index_only=True,preview_first=False)
+        if result['status']!='index_ready':raise ValueError(result.get('reason','微信索引未就绪'))
+        side=catalog.read(catalog.PATH)['clients']['wechat']
+        return dict(text=f'已读取 {len(side["items"])} 项；未加入素材库。',seconds=time.perf_counter()-started,
+                    read_succeeded=True,coverage=side.get('scope'),count=len(side['items']),report=side.get('source_report'))
+
 
 
 def execute(request):

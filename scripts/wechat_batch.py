@@ -257,7 +257,7 @@ def confirm_index(runners,folder,cancel=None,source=None):
                   'confirmed':sum(r.report.get('collection_verified',False) for r in eligible),
                   'seconds':round(time.perf_counter()-started,4),'client_ui_calls':0})
     except Exception as exc:
-        if str(exc) in ('cancel_requested','cancelled_escape'):raise
+        if isinstance(exc,InterruptedError) or str(exc) in ('cancel_requested','cancelled_escape'):raise
         for r in eligible:r.report['completion_check']='local_index_unavailable'
         save_json(folder/'completion-summary.json',{'status':'unavailable','error_type':type(exc).__name__,
                   'seconds':round(time.perf_counter()-started,4),'client_ui_calls':0})
@@ -269,9 +269,9 @@ def skip_index_members(runners,folder,cancel,source=None):
     from emoji_bridge import catalog
     from wechat_acquire import current_index
     path=ROOT/'runtime-data/T005/library.json'
-    if not path.exists() and source is None:raise StopAutomation('wechat_favorites_check_unavailable')
     started=time.perf_counter()
     try:
+        if not path.exists() and source is None:raise StopAutomation('wechat_favorites_check_unavailable')
         previous=({'source':str(source)} if source is not None else
                   catalog.read(catalog.read(path)['clients']['wechat']['source_report']))
         if source is None and previous.get('status')!='index_decrypted_and_integrity_verified':
@@ -288,8 +288,11 @@ def skip_index_members(runners,folder,cancel,source=None):
                 r.report.update(membership_check='local_media_unavailable',
                                 membership_error_type=type(exc).__name__)
                 continue
-            if digest is None:continue
+            if digest is None:
+                r.report['membership_check']='unmatched'
+                continue
             r.report.update(status='already_exists',reason='exact_file_in_authenticated_local_favorites_index',
+                            membership_check='matched',
                             collection_verified=True,collection_persisted=False,
                             membership_evidence=str(proof),member_md5=digest,member_representation=representation,
                             membership_scope='current authenticated local snapshot')
@@ -297,14 +300,19 @@ def skip_index_members(runners,folder,cancel,source=None):
         save_json(folder/'pre-add-dedupe.json',{'matched':matched,'seconds':round(time.perf_counter()-started,4),
                   'client_ui_calls':0,'post_add_check':False})
     except Exception as exc:
-        if str(exc) in ('cancel_requested','cancelled_escape'):raise
-        # A missing dedupe proof must not silently become permission to send.
+        if isinstance(exc,InterruptedError) or str(exc) in ('cancel_requested','cancelled_escape'):raise
+        # Index availability is separate from submission safety. A first,
+        # never-submitted action can proceed; uncertain journals remain pending.
         save_json(folder/'pre-add-dedupe.json',{'status':'unavailable','error_type':type(exc).__name__})
-        raise StopAutomation('wechat_favorites_check_unavailable') from exc
+        for r in runners:
+            r.report['membership_check']='unavailable'
+            prior=getattr(r,'prior',None)
+            if prior and prior.get('status')!='not_submitted' and r.report.get('submission_state')!='not_started':
+                r.report.update(status='pending_confirmation',reason='wechat_favorites_check_unavailable')
 
 
 @key_scan_session()
-def execute(assets,cancel=None,resume_sent=False,progress=None,retry_approvals=None,verify_only=False,index_source=None,resume_staged=False):
+def execute(assets,cancel=None,resume_sent=False,progress=None,retry_approvals=None,verify_only=False,index_source=None,resume_staged=False,new_intent_completed=()):
     if not assets:raise ValueError('empty_wechat_batch')
     stamp=datetime.now().strftime('%Y%m%d-%H%M%S-%f');folder=ROOT/'private/T006/wechat-batches'/stamp
     folder.mkdir(parents=True);runners=[];q=None;started=time.perf_counter()
@@ -337,7 +345,10 @@ def execute(assets,cancel=None,resume_sent=False,progress=None,retry_approvals=N
                 if runner.prior:
                     phase=runner.prior['status']
                     report['prior_phase']=phase
-                    if phase in DONE:
+                    if phase in DONE and not verify_only and str(runner.asset_path) in new_intent_completed:
+                        save_json(evidence/'previous-completed-intent.json',runner.prior)
+                        runner.prior=None;report['submission_state']='not_started'
+                    elif phase in DONE:
                         report['status']='pending_confirmation'
                         report['reason']='historical_membership_requires_verification'
                     elif phase=='batch_send_pending' and resume_staged:

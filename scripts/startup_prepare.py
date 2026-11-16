@@ -1,6 +1,6 @@
 """First-use readers with isolated working catalogs and one shared writer.
 
-Only the QQ worker operates a client window. WeChat uses its authenticated
+QQ reads local cache files. WeChat uses its authenticated
 index/download path. No sends/additions or transfer queues are started here.
 """
 from concurrent.futures import ThreadPoolExecutor
@@ -14,23 +14,16 @@ from emoji_bridge.windows import StopAutomation
 
 
 def prepare_qq(library_path,cancel,changed,observed,index_only=False):
-    if not index_only:
-        from qq_startup_pipeline import prepare
-        return prepare(library_path,cancel,changed,observed)
-    from qq_catalog import scan,MAX_SCAN_VIEWS
-    library=catalog.read(library_path)
-    library['clients']['qq']['initial_index_attempted']=True;catalog.save(library,library_path)
-    changed()
-    def on_page(path,report):
-        observed(dict(complete=False,initial_index_attempted=True,
-            scope=f'正在读取 {len(report["pages"])} 个收藏视图；尚未读完',
-            source_report=str(path),snapshot_at=report['at'],
-            items=[dict(i,scan=str(Path(path).resolve())) for i in report['items']]))
-    path,report=scan(MAX_SCAN_VIEWS,cancel,progress=on_page)
-    library=catalog.read(library_path);catalog.merge_qq(library,path,cancel=cancel.exists,match_originals=False)
-    library['clients']['qq']['initial_index_attempted']=True;catalog.save(library,library_path);changed()
-    if not report['items']:raise ValueError(report.get('reason','qq_no_observations'))
-    return {'reason':report.get('reason')}
+    from emoji_bridge.cache_listing import scan,catalog_side
+    from emoji_bridge.client_sources import settings
+    root=settings().get('qq_ori')
+    if not root:raise ValueError('请先选择 QQ 缓存目录')
+    index=scan(root,catalog.ROOT/'runtime-data/cache-read/qq.json',cancel=cancel.exists)
+    library=catalog.read(library_path);library['clients']['qq']=catalog_side(index)
+    library['clients']['qq']['initial_index_attempted']=True
+    catalog.save(library,library_path);changed()
+    return {'reason':None}
+
 
 
 def prepare_wechat(library_path,cancel,changed,observed,index_only=False):

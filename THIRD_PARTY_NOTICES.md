@@ -33,7 +33,7 @@ S0163 首发候选。原创代码版权 Neo，GPL-3.0-only；第三方各自原�
 - 模板插画/字体依照上游各项来源记录；引擎 MIT 不自动覆盖作品版权。
 - V10、随手素材、像素动效由用户提供的代码包适配，实际出处在 assets/desktop/THIRD_PARTY.txt、assets/startup-v10、assets/motion。
 - 游戏声音、美术及 QQ/微信品牌标识不由本项目重新授权；公开分发证据状态见 RELEASE_RIGHTS.md。
-- OhMyMeme、Fabric、ScreenToGif、PixiJS 等为交互或格式阅读参考，没有将整套应用代码/资源复制到产品；不是随包运行依赖。
+- OhMyMeme、Fabric、ScreenToGif、PixiJS 等为交互或格式阅读参考，没有将整套应用代码/资源复制到产品；不是随包运行依赖。S0176 的少量 pHash 改编函数单独列于文末。
 
 ## Windows-MCP（S0049隔离研究；S0050小范围改编）
 
@@ -69,3 +69,7 @@ wechat_meme_export 的固定仓库、完整提交、采用文件及 SHA-256 另�
 - https://github.com/OhMyMeme/OhMyMeme ，提交 `3a3cad5c6a17544718ca5eb309a2ab77e7dadd3b`：仓库元信息及所读 `src/qqnt_extract.py` 明确 GPL-3.0，模块说明源自 QQFavoriteExtract；核对 `UserDataInfo.ini` 的 `UserDataSavePath` 和固定个人表情目录。
 
 本轮未复制、执行或分发以上三个项目的源码／二进制，未使用其外部昵称查询；项目内另写只读候选与完整副本验证程序。准确阅读范围和本机限制见 `docs/T006-qq-cache.md`，不将缓存中所有文件直接视作当前收藏。
+
+## S0176 相似整理算法
+
+`src/emoji_bridge/similar_materials.py` 的灰度缩放与 64 位 DCT pHash 函数改编自 [OhMyMeme src/webui.py](https://github.com/OhMyMeme/OhMyMeme/blob/f6ed27da57f8480b3d38a4e116ac59b741588387/src/webui.py)，固定提交 f6ed27da57f8480b3d38a4e116ac59b741588387，GPL-3.0。保留上游署名与许可证正文 LICENSE；本项目增加 EXIF/透明背景归一化、按内容缓存、取消及人工整理入口，排除动画首帧近似。未移植上游自动隐藏口袋、协议登录或删除原文件流程。

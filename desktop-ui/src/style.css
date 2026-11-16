@@ -65,3 +65,13 @@ h1{font-size:26px;font-weight:600;letter-spacing:-.5px;line-height:1.35;margin:0
 .asset.selected .tick{background:var(--accent);color:var(--background)}
 .transfer-results section{border-top:1px solid var(--border);padding:12px 0}
 .transfer-results ul{padding:0;list-style:none}.transfer-results li{display:flex;gap:20px;justify-content:space-between;padding:6px 0}.transfer-results li span{overflow-wrap:anywhere}
+
+/* Selection mode remains visible at zero items, without changing card geometry. */
+.selection-mode-actions{display:flex;gap:8px;flex-shrink:0}
+.grid-caption{gap:12px;flex-wrap:wrap}
+.grid-caption .selection-mode-actions button{font-size:14px;min-height:36px;color:var(--ink);background:var(--surface)}
+.grid-caption .selection-mode-actions .primary{background:var(--accent);color:var(--background)}
+.copy-notice{padding:0 0 12px;color:var(--ink)}
+.asset .tick{border-color:var(--muted)}
+
+/* Both pages always expose selection; a single selected card copies on click. */

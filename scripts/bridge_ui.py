@@ -500,19 +500,9 @@ class App:
             self.render()
             self.check_qq_cache()
     def check_qq_cache(self):
-        # Diagnostic fixtures disable all automatic local loading together.
-        if not self.auto_previews or self.auto_paused or self.qq_cache_checking or self.busy or self.destroyed:return
-        self.qq_cache_checking=True
-        def work():
-            try:
-                from qq_cache_changes import check,label
-                def cancelled():
-                    if self.auto_paused:raise RuntimeError('cancel_requested')
-                value=label(check(cancel_check=cancelled))
-            except (OSError,ValueError,KeyError,RuntimeError):
-                value='缓存变化暂未能检查；仍显示旧收藏快照。'
-            self.events.put(('qq_cache',value))
-        threading.Thread(target=work,daemon=True).start()
+        # The legacy view shares the local cache index; never infer favorites
+        # membership or ask the user to open QQ for an already readable file.
+        self.qq_cache_hint='直接读取个人缓存；旧缓存仍可使用。刷新不加入素材库。'
     def initial_qq_index(self):
         if getattr(self,'auto_paused',False) is True or getattr(self,'destroyed',False) is True:return
         side=self.library['clients']['qq']
@@ -537,35 +527,9 @@ class App:
         # Failed native activation needs an explicit refresh; do not loop it.
         if not side.get('initial_index_attempted'):self.read_qq(expand=False)
     def prepare_qq(self):
-        if self.busy:return
-        self.preview_busy=True
-        def work():
-            from qq_offline_index import build,needs_prepare
-            from qq_cache_acquire import current_inventory
-            library=catalog.read(catalog.PATH);side=library['clients']['qq'];built=None
-            inventory,_=current_inventory(self.cancel)
-            if needs_prepare(side,inventory.get('directory_fingerprint')):
-                built=build(catalog.PATH,self.cancel,lambda n,total:self.events.put(('index_progress',(n,total))),
-                      stage=lambda label:self.events.put(('preparation_stage',label)),
-                      after_basic=self.prepare_wechat_before_qq_variants,practical_first=True)
-                side=catalog.read(catalog.PATH)['clients']['qq']
-            completion=self.finish_qq_preparation(built)
-            side=catalog.read(catalog.PATH)['clients']['qq']
-            ready=sum(self.qq_ready(i) for i in side['items'])
-            return f'QQ 已准备：可直接勾选搬运 {ready} 项；暂不可搬运 {len(side["items"])-ready} 项已注明。未发送或添加。'+('补读停止：'+completion['reason'] if completion.get('reason') else '')
-        self.start('正在自动准备 QQ 收藏，已有结果会复用，可继续浏览',work,local_only=True)
-    def finish_qq_preparation(self,built):
-        side=catalog.read(catalog.PATH)['clients']['qq']
-        results=(built or {}).get('items',[])
-        # Only an in-memory completed build can bypass the unresolved pass.
-        # Existing catalogs and a later transfer still validate their receipts.
-        if (results and {r['id'] for r in results}=={i['id'] for i in side['items']}
-                and all(r['status'] in ('ready','reused') for r in results)):
-            return {'ready':sum(self.qq_ready(i) for i in side['items']),
-                    'state':'prepared_in_this_run','extra_source_pass':False}
-        from qq_prepare_remaining import complete_observed
-        return complete_observed(catalog.PATH,self.cancel,lambda label:self.events.put(('preparation_stage',label)))
-    def start(self,label,work,local_only=False):
+        self.read_qq()
+
+    def start(self,label,work,local_only=False,owns_catalog=False):
         if self.busy:return
         self.material_import_path=None
         if self.summary_after:self.root.after_cancel(self.summary_after);self.summary_after=None
@@ -579,7 +543,8 @@ class App:
                 else:
                     from emoji_bridge.timing import session
                     timing_path=ROOT/'reports/T006'/('task-timing-'+datetime.now().strftime('%Y%m%d-%H%M%S-%f')+'.json')
-                    with single_instance(ROOT/'runtime-data/T005/collection.lock'),session(timing_path):result=work()
+                    from contextlib import nullcontext
+                    with (nullcontext() if owns_catalog else single_instance(ROOT/'runtime-data/T005/collection.lock')),session(timing_path):result=work()
                     self.events.put(('done',result))
             except Exception as exc:
                 from emoji_bridge.qq_controls import explain_error
@@ -711,47 +676,26 @@ class App:
             if not self.destroyed:self.root.after(80,self.poll)
     def read_qq(self,expand=True):
         if self.busy:return
-        self.auto_paused=False
-        self.plan=None
-        from qq_catalog import MAX_SCAN_VIEWS
-        self.preview_busy=True
+        self.auto_paused=False;self.plan=None;self.preview_busy=True
         def work():
-            from qq_catalog import scan
-            library=catalog.read(catalog.PATH)
-            fresh=not library['clients']['qq'].get('items')
-            library['clients']['qq']['initial_index_attempted']=True;catalog.save(library)
-            def show_observations(path,report):
-                self.events.put(('qq_scan_progress',dict(complete=False,
-                    scope=f'正在读取 {len(report["pages"])} 个收藏视图；尚未读完',
-                    initial_index_attempted=True,source_report=str(path),snapshot_at=report['at'],
-                    items=[dict(i,scan=str(Path(path).resolve())) for i in report['items']])))
-            path,r=scan(MAX_SCAN_VIEWS,self.cancel,
-                        **({'progress':show_observations} if fresh else {}))
-            library=catalog.read(catalog.PATH);catalog.merge_qq(library,path,cancel=self.cancel.exists,match_originals=False)
-            library['clients']['qq']['initial_index_attempted']=True;catalog.save(library)
-            if not r['items']:raise ValueError(r.get('reason','未读到收藏，保留旧索引；请用“刷新 QQ 收藏”重试。'))
-            return f'QQ 已读取 {len(r["items"])} 项；勾选搬运时只准备所选原件，完整性尚未证明。'+('停止原因：'+r['reason'] if r.get('reason') else '')
-        self.start('首次建立或显式更新 QQ 索引，保存后后续直接使用（不发送）',work)
+            from startup_prepare import prepare_qq
+            prepare_qq(catalog.PATH,self.cancel,lambda:None,lambda side:None)
+            return '已读取本地缓存；未加入素材库，无需打开 QQ。'
+        self.start('读取整个个人表情缓存目录',work,local_only=True)
+
     def acquire(self,c):
         if self.busy:return
-        self.plan=None
         ids=list(self.selected[c])
-        if not ids:self.status.set('请先勾选需要取得原件的条目。');return
-        if len(ids)!=1:self.status.set('本阶段原件获取一次选择一项，逐项保留来源证据。');return
-        item=next(i for i in self.library['clients'][c]['items'] if i['id']==ids[0])
-        if item['original_state']=='ready':self.status.set('这项已有原件，无需再次获取。');return
-        source_report=self.library['clients'][c].get('source_report')
+        if not ids:self.status.set('请先选择表情');return
         def work():
-            if c=='qq':
-                from qq_cache_acquire import acquire_or_resume
-                result=acquire_or_resume(item,self.cancel)
-            else:
-                from wechat_acquire import acquire_selected
-                result=acquire_selected(item,source_report,self.cancel)
-            library=catalog.read(catalog.PATH);entry=next(i for i in library['clients'][c]['items'] if i['id']==item['id'])
-            catalog.apply_acquisition(entry,result)
-            catalog.save(library);return '原件已取得并核对源收藏。尚未搬运。' if result.get('status')=='original_verified' else result.get('reason','原件获取结果待确认。')
-        self.start('读取 QQ 本地个人表情原件并核验收藏（不发送）' if c=='qq' else '获取所选微信原件并核验个人收藏（不发送、不添加）',work)
+            from collection_files import original
+            library=catalog.read(catalog.PATH)
+            for item in library['clients'][c]['items']:
+                if self.cancel.exists():break
+                if item['id'] in ids:original(c,item,library,ROOT,self.cancel)
+            catalog.save(library)
+            return '所选文件已准备，未加入素材库。'
+        self.start('准备所选完整文件',work,local_only=True)
 
     def select_matching(self,client):
         if self.busy and not self.preview_busy:return
@@ -790,52 +734,25 @@ class App:
         self.start('将所选完整原件加入素材库；未取得的先获取，不发送或添加',work,local_only=True)
         self.material_import_path=path
     def transfer(self,c,ids=None):
-        if self.busy and self.preview_busy is not True:return
+        if self.busy:return
         chosen=set(self.selected[c] if ids is None else ids)
-        ids=[i['id'] for i in catalog.display_items(self.library['clients'][c]) if i['id'] in chosen]
-        if not ids:self.status.set('请先勾选要搬运的项目，默认不全选。');return
-        if c=='qq':
-            known={i['id']:i for i in self.library['clients'][c]['items']}
-            unavailable=[ident.rsplit(':',1)[-1] for ident in ids if ident not in known or known[ident].get('transfer_block_reason')]
-            if unavailable:
-                self.status.set('尚未开始搬运；以下项目未准备好：'+', '.join(unavailable)+'。请取消这些勾选，其他可搬运项目不受影响。');return
-        self.refresh_transfer_facts()
-        skipped=[{'item_id':ident,**fact} for ident in ids if (fact:=self.duplicate_fact(c,ident))]
-        omitted={j['item_id'] for j in skipped};ids=[ident for ident in ids if ident not in omitted]
-        if not ids:
-            self.last_detail=f'所选 {len(skipped)} 项均按已保存的收藏/添加记录标为重复，已跳过；本次没有发送或添加。\n标记不是实时成员检查；两边都有仅指已读取范围，收藏变化后可更新读取记录。'
-            self.status.set(f'已跳过 {len(skipped)} 项重复，没有发送或添加。依据可在“查看详情”查看。')
-            if self.summary_after:self.root.after_cancel(self.summary_after);self.summary_after=None
-            self.task_result.set('无需重复搬运');return
-        try:
-            from selected_transfer import create
-            if self.pending_plan and self.pending_plan[1:]==(c,tuple(ids)):
-                plan=self.pending_plan[0]
-            else:
-                plan=ROOT/'runtime-data/T005/queues'/(datetime.now().strftime('%Y%m%d-%H%M%S-%f')+'.json')
-                create(self.library,c,ids,plan)
-                if skipped:
-                    data=catalog.read(plan);data['skipped_duplicates']=skipped;save_json(plan,data)
-                save_json(ROOT/'runtime-data/T005/last-queue.json',{'plan':str(plan),'selected_ids':ids,'source_client':c})
-            self.plan=plan
-        except Exception as exc:self.status.set('不能搬运：'+str(exc)+'。未发送或添加。');return
-        self.task_result.set(f'本次搬运：已保存 {len(ids)} 项，尚未开始添加。')
-        if self.preview_busy is True:
-            self.wechat_prepare_pending=False
-            self.pending_transfer=(c,list(ids));self.pending_plan=(plan,c,tuple(ids))
-            self.cancel.parent.mkdir(parents=True,exist_ok=True);self.cancel.touch()
-            self.status.set(f'已保存 {len(ids)} 项搬运任务；正在停止后台读取，随后优先准备所选。取消可撤回。');return
-        self.pending_plan=None
-        self.progress_total=len(ids)
-        self.start(f'搬运 {len(ids)} 项'+(f'；按记录跳过重复 {len(skipped)} 项' if skipped else '')+'（微信仅用文件传输助手）',lambda:self.run_queue(plan))
+        if not chosen:self.status.set('请先选择表情');return
+        from emoji_bridge.collection_view import grouped
+        from collection_transfer import create
+        rows=grouped(self.library)
+        selected=[r['id'] for r in rows if any(m['client']==c and m['id'] in chosen and not m['unseen'] for m in r['members'])]
+        plan=self.material_store.root/'tasks'/(datetime.now().strftime('%Y%m%d-%H%M%S-%f')+'.json')
+        create(self.material_store,rows,selected,'wechat' if c=='qq' else 'qq',ROOT,plan,source_client=c)
+        self.plan=plan;self.progress_total=len(selected)
+        save_json(ROOT/'runtime-data/T005/last-queue.json',{'plan':str(plan),'selected_ids':list(chosen),'source_client':c})
+        self.start('准备所选文件并执行目标互通；不加入素材库',lambda:self.run_queue(plan),owns_catalog=True)
+
     def run_queue(self,plan,resume=False):
-        from local_bridge import execute,recheck_source
-        with single_instance(ROOT/'runtime-data/T004/queue.lock'):
-            if catalog.read(plan).get('schema')=='selected-workflow-v1':
-                from selected_transfer import run
-                r=run(plan,catalog.PATH,ROOT/'private/T005/assets',resume,progress=lambda p:self.events.put(('progress',dict(p))),clear_cancel=False)
-            else:r=run_plan(plan,execute,recheck_source,clear_cancel=False)
-        return r
+        value=catalog.read(plan)
+        if value.get('source_kind')!='local_material_library':
+            raise ValueError('旧任务记录保留；请在互通页查看既有结果，不会重放旧来源扫描')
+        from material_transfer import run
+        return run(plan,ROOT,resume=resume,clear_cancel=False)
 
     def show_details(self):
         details_window(self.root,'任务详情',self.last_detail or '暂无任务记录。选择素材并执行后，可在这里查看进度和结果。')
@@ -997,7 +914,7 @@ class App:
         # Clear old cancellation synchronously, before exposing the new task to
         # Cancel. The worker must never erase a newly clicked cancellation.
         for token in self.queue_cancel_paths():token.unlink(missing_ok=True)
-        self.start('继续上次队列；已完成项跳过，未知提交不重发',lambda:self.run_queue(self.plan,True))
+        self.start('继续上次队列；已完成项跳过，未知提交不重发',lambda:self.run_queue(self.plan,True),owns_catalog=True)
     def queue_cancel_paths(self):
         if not self.plan:return []
         paths=[self.plan.with_suffix('.cancel')]

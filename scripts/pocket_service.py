@@ -18,9 +18,13 @@ def on_window(window, action):
 
 class PocketService:
     def __init__(self, owner):
-        self.owner=owner;self.window=None;self.edge=None;self.stickers=StickerManager()
+        self.owner=owner;self.window=None;self.edge=None
+        from pocket_tools import PocketTools
+        self.tools=PocketTools(self)
+        self.stickers=StickerManager(on_context=self.tools.actions)
         self.hidden_by=set();self.restore=[];self.opening=threading.Lock();self.closed=False;self.owners={}
         self.dragging=False;self.visible_requested=False;self.position=self.owner.store.root/'pocket-position.json'
+        self.session=0;self.temporary=False;self.pinned=True;self.copy_guard=threading.Lock()
         threading.Thread(target=self._watch_owners,daemon=True,name='overlay-owners').start()
 
     def _watch_owners(self):
@@ -30,10 +34,11 @@ class PocketService:
             for token,pid in list(self.owners.items()):
                 if not process_alive(pid):self.suspend(token,False)
 
-    def open(self, edge=False):
+    def open(self, edge=False, temporary=False):
         import webview
         from webview.dom import DOMEventHandler
         self.visible_requested=True
+        self.session+=1;self.temporary=bool(temporary)
         with self.opening:
             # Legacy callers resolve to the SAME collector, never a second port.
             edge=False;field='window';window=self.window
@@ -117,7 +122,7 @@ class PocketService:
             native.Left=max(area.Left,min(native.Left,area.Right-native.Width))
             native.Top=max(area.Top,min(native.Top,area.Bottom-native.Height))
             if self.visible_requested and not self.hidden_by:
-                window.on_top=True
+                window.on_top=self.pinned
                 import ctypes
                 ctypes.windll.user32.ShowWindow(ctypes.c_void_p(int(native.Handle.ToInt64())),4)
         on_window(window,show)
@@ -131,7 +136,7 @@ class PocketService:
             position={}
             def hide():
                 position.update(x=window.x,y=window.y)
-                window.on_top=False;window.native.Hide()
+                window.native.Hide()
             on_window(window,hide)
             # Bridge/hotkey worker persists after hiding, outside WinForms' loop.
             if position:
@@ -143,7 +148,7 @@ class PocketService:
     def toggle(self):
         if self.dragging:return False
         if self.visible_requested:return self.hide()
-        return self.open()
+        return self.open(temporary=True)
 
     def suspend(self, token, value, pid=None):
         """Acknowledged before foreground automation; nested owners restore last."""
@@ -152,6 +157,7 @@ class PocketService:
             first=not self.hidden_by;self.hidden_by.add(token)
             if pid:self.owners[token]=int(pid)
             if first:
+                for token in list(self.tools.windows):self.tools.dismiss(token)
                 self.restore=[]
                 for window in (self.window,self.edge):
                     if window and window.native and window.native.Visible:
@@ -173,10 +179,12 @@ class PocketService:
     def close(self):
         if self.closed:return
         self.closed=True
+        self.tools.close()
         for window in (self.window,self.edge):
             if window:
                 on_window(window,lambda:setattr(window,'on_top',False));window.destroy()
         self.stickers.shutdown()
+        self.tools.cleanup()
 
 
 class PocketAPI:
@@ -197,7 +205,14 @@ class PocketAPI:
         prefs=self._service.owner.preferences()
         return dict(task=dict(self._service.owner.task),revision=self._service.owner.store.revision(),
                     reduced_motion=bool(prefs.get('reduce_motion')),always_scrollbars=bool(prefs.get('always_scrollbars')),
-                    pinned=bool(self._window.on_top),hidden=bool(self._service.hidden_by),sticker_error=str(self._service.stickers._error or ''))
+                    pinned=self._service.pinned,session=self._service.session,hidden=bool(self._service.hidden_by),sticker_error=str(self._service.stickers._error or ''))
+
+    def drawing(self, tool):return self._service.tools.draw(tool)
+    def toolsState(self):return dict(self._service.tools.job)
+    def cancelCutout(self):self._service.tools.cancel.set();return True
+    def cutoutItem(self,item):
+        row=self._service.owner.store.get(item['id'])
+        return self._service.tools.cutout(row['path'])
 
     def setFavorite(self, ident, value):
         self._service.owner.store.organize([ident],favorite=bool(value));return {'ok':True}
@@ -226,9 +241,15 @@ class PocketAPI:
         self._service.owner.store.mark_used([row['id']]);return result
 
     def copyItem(self,item):
-        from emoji_bridge.file_clipboard import copy_file_to_clipboard
-        files=self._service.owner.drag_files([item['id']])
-        return copy_file_to_clipboard(Path(files[0]),int(self._window.native.Handle.ToInt64()))
+        from emoji_bridge.file_clipboard import copy_media_to_clipboard
+        service=self._service
+        if not service.copy_guard.acquire(blocking=False):raise ValueError('正在复制，请稍候')
+        try:
+            files=service.owner.drag_files([item['id']])
+            result=copy_media_to_clipboard(Path(files[0]),int(self._window.native.Handle.ToInt64()))
+            service.owner.store.mark_used([item['id']])
+            return result
+        finally:service.copy_guard.release()
 
     def dragItem(self,item):
         result=self._service.owner.drag([item['id']],self._window)
@@ -237,6 +258,7 @@ class PocketAPI:
     def prepareItem(self,item):return bool(self._service.owner.drag_files([item['id']]))
 
     def setPinned(self,value):
+        self._service.pinned=bool(value)
         on_window(self._window,lambda:setattr(self._window,'on_top',bool(value)))
         return {'ok':True,'pinned':bool(value)}
 

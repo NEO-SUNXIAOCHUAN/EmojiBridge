@@ -29,7 +29,7 @@ def run_qq_plan(path,execute_batch,source_check,cancel,after_save=None,batch_siz
                                'confirmed':sum(j['status'] in SUCCESS for j in plan['jobs']),
                                'total':len(plan['jobs'])}
         save()
-        requests=[{'asset':j['target_asset'],'command':c} for j,c in pending]
+        requests=[{'asset':j['target_asset'],'command':c,'new_intent_completed':bool(j.get('previous_completed_intent'))} for j,c in pending]
         results=execute_batch(requests,cancel)
         if len(results)!=len(pending):raise ValueError('batch_result_count_mismatch')
         if any(str(r.get('asset'))!=str(req['asset']) for r,req in zip(results,requests)):

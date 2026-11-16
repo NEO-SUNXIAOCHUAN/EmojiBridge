@@ -36,6 +36,9 @@ class DesktopService:
         self.factory=Factory(self)
         self.workspace=None;self.workspace_rect={'visible':False};self.native_view='editor';self.route_event=None;self.route_serial=0;self.saved_item=None;self.saved_serial=0
         self.hotkey=None;self.hotkey_key="";self.hotkey_error="";self.drawer=None;self.tray=None
+        self.copy_guard=threading.Lock()
+        self.update_info={'text':'尚未检查更新'};self.update_checking=False;self.pending_update=None
+        self.maintenance_wait=None;self.restored_library=None
         from pocket_service import PocketService
         self.pocket=PocketService(self)
         self.token=uuid.uuid4().hex;owner=self
@@ -108,7 +111,7 @@ class DesktopService:
                     file=owner.factory.live.root/key/('preview'+suffix)
                     if file.is_file():self.reply(file.read_bytes(),'image/png' if suffix=='.png' else 'image/webp');return
                     self.send_error(404);return
-                if route in ('/','/main.js','/main.css','/pocket.html','/pocket.js','/pocket.css','/edge.html'):
+                if route in ('/','/main.js','/main.css','/pocket.html','/pocket.js','/pocket.css','/edge.html','/overlay.html','/overlay.js','/overlay.css'):
                     file=APP/'assets/desktop'/('index.html' if route=='/' else route[1:])
                     if file.is_file():self.reply(file.read_bytes(),mimetypes.guess_type(str(file))[0] or 'text/plain');return
                 self.send_error(404)
@@ -133,6 +136,8 @@ class DesktopService:
         os.environ['EMOJI_BRIDGE_OVERLAY_HOST_PID']=str(os.getpid())
         threading.Thread(target=self.server.serve_forever,daemon=True,name='desktop-resources').start()
         threading.Thread(target=self.process_native_events,daemon=True,name='desktop-native-events').start()
+        self.collections.start_monitor()
+        threading.Thread(target=self.update_check,daemon=True,name='release-metadata-check').start()
         saved_drawer=self.drawer_settings()
         if saved_drawer.get('key'):
             try:self.drawer_settings(saved_drawer['key'])
@@ -265,7 +270,7 @@ class DesktopService:
         transfer=dict(self.transfer);transfer['text']=redact(transfer.get('text',''),accounts.values())
         for key in ('scene','request_error'):
             if transfer.get(key):transfer[key]={**transfer[key],'detail':redact(transfer[key].get('detail',''),accounts.values())}
-        return dict(task=task,transfer=transfer,accounts=accounts,editor_status=dict(self.editor_status),activities=list(self.activities),xp=self.xp,closing=self.closing,revision=self.store.revision(),navigation=dict(self.navigation),native_open=bool(self.native and self.native.poll() is None),route_event=self.route_event,saved_item=self.saved_item,saved_serial=self.saved_serial)
+        return dict(update=dict(self.update_info),task=task,transfer=transfer,accounts=accounts,editor_status=dict(self.editor_status),activities=list(self.activities),xp=self.xp,closing=self.closing,revision=self.store.revision(),navigation=dict(self.navigation),native_open=bool(self.native and self.native.poll() is None),route_event=self.route_event,saved_item=self.saved_item,saved_serial=self.saved_serial)
 
     def take_commands(self,pid=None):
         # A request already in flight belongs to the process/queue it observed.
@@ -286,6 +291,13 @@ class DesktopService:
             return not self.closed and self.native is process and self.commands is commands and (kind not in ('presented','navigation_error','return') or event.get('request_id',0)==getattr(self,'navigation_id',0))
         if not current():return
         if kind in ('close_ready','close_cancelled','close_interaction','close_draining','close_prompt_alive'):
+            if self.maintenance_wait:
+                wait=self.maintenance_wait
+                if kind=='close_interaction':
+                    self.route_serial+=1;self.route_event={'serial':self.route_serial,'page':'native','view':'editor'}
+                if kind in ('close_ready','close_cancelled'):
+                    wait['result']=kind;wait['event'].set()
+                return
             callback=getattr(self,'close_answer',None)
             if callback:callback(kind)
             return
@@ -388,6 +400,7 @@ class DesktopService:
             choices={'palette':('midnight','neutral'),'material':('frost','refract','solid'),'motion':('ease','spring'),'dialog_style':('center','origin'),'collection_style':('stack','fan','arc')}
             current.update({k:value[k] for k,allowed in choices.items() if value.get(k) in allowed});save_json(file,current)
             self.commands.put({'kind':'scroll_preferences','value':current})
+            if 'palette' in value and getattr(self,'refresh_titlebar',None):self.refresh_titlebar()
         if 'always_scrollbars' not in current:
             try:
                 import winreg
@@ -399,6 +412,116 @@ class DesktopService:
         if getattr(self,'request_close',None):self.request_close()
         elif self.window:self.window.destroy()
         return True
+
+    def update_check(self):
+        if self.update_checking:return dict(self.update_info)
+        self.update_checking=True
+        try:
+            from emoji_bridge.app_update import latest
+            self.update_info=latest(APP)
+        except Exception as exc:self.update_info={'text':'更新检查暂不可用：'+str(exc),'url':'https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/releases'}
+        finally:self.update_checking=False
+        return dict(self.update_info)
+
+    def update_status(self):
+        from emoji_bridge.app_update import current
+        return dict(self.update_info,checking=self.update_checking,current=current(APP))
+
+    def update_install(self):
+        if self.transfer.get('active'):return {'accepted':False,'message':'请先完成或取消当前互通，再更新'}
+        info=dict(self.update_info)
+        def work():
+            from emoji_bridge.app_update import prepare,launch_helper
+            session,build=prepare(APP,info,self.cancel,lambda label,n,t:self.task.update(text=label,completed=n,total=t))
+            plan,process=launch_helper(APP,session,self.store.root,build)
+            self.arm_restart(plan,process)
+            return {'text':'更新已校验，正在按正常保存流程退出并重启。'}
+        return self.start(work,'准备下载应用更新…')
+
+    def arm_restart(self,plan,process):
+        session=Path(plan['session']);deadline=time.monotonic()+10
+        while not (session/'listening.json').exists():
+            if process.poll() is not None or time.monotonic()>deadline:raise ValueError('独立更新程序未就绪；当前程序保持运行')
+            time.sleep(.05)
+        self.pending_update=plan
+        def close_when_finished():
+            while self.task.get('active') and not self.closed:time.sleep(.05)
+            if self.cancel.is_set():
+                save_json(session/'abort.json',{'token':plan['token']});self.pending_update=None;return
+            self.close_window()
+        threading.Thread(target=close_when_finished,daemon=True,name='saved-update-close').start()
+
+    def update_close_answer(self,kind):
+        if not self.pending_update:return
+        plan=self.pending_update;session=Path(plan['session'])
+        if kind=='close_cancelled':
+            save_json(session/'abort.json',{'token':plan['token']});self.pending_update=None
+            self.task.update(text='已取消退出；当前版本继续使用，未切换程序。')
+        elif kind=='close_ready':save_json(session/'saved-ready.json',{'token':plan['token']})
+
+    def update_startup_ready(self):
+        session=getattr(self,'update_session',None)
+        if not session:return True
+        from emoji_bridge.app_update import current
+        plan=json.loads(Path(session).read_text('utf8'));actual=current(APP)
+        if actual.get('build')!=plan['build'] or actual.get('source_commit')!=plan.get('source_commit') or str(self.store.root)!=plan['library']:
+            raise ValueError('启动版本或素材库与更新目标不符')
+        with self.store.connect() as conn:
+            if conn.execute('PRAGMA quick_check').fetchone()[0]!='ok':raise ValueError('素材库未通过启动检查')
+        save_json(Path(session).parent/'started.json',{'token':plan['token'],'build':actual['build'],
+            'source_commit':actual['source_commit'],'library':str(self.store.root),'pid':os.getpid(),'services_ready':bool(self.server and self.collections.monitor.is_alive())})
+        self.update_session=None;return True
+
+    def save_editor_for_backup(self):
+        if not self.native or self.native.poll() is not None:return
+        wait={'event':threading.Event(),'result':None};self.maintenance_wait=wait
+        self.commands.put({'kind':'prepare_close'})
+        try:
+            while not wait['event'].wait(.2):
+                if self.cancel.is_set():raise InterruptedError('已取消备份，原库保持')
+                if self.native.poll() is not None:raise ValueError('编辑器未确认保存，未开始备份')
+            if wait['result']!='close_ready':raise InterruptedError('已取消保存，未开始备份')
+        finally:self.maintenance_wait=None
+
+    def library_backup(self):
+        import webview
+        if self.transfer.get('active'):return {'accepted':False,'message':'互通结束后可备份'}
+        chosen=self.window.create_file_dialog(webview.FileDialog.SAVE,save_filename='EmojiBridge-backup-'+time.strftime('%Y%m%d-%H%M%S')+'.zip',file_types=('备份 ZIP (*.zip)',))
+        if not chosen:return None
+        file=chosen[0] if isinstance(chosen,(tuple,list)) else chosen
+        def work():
+            from emoji_bridge.library_backup import create
+            self.save_editor_for_backup()
+            result=create(self.store,file,self.cancel,lambda n,t:self.task.update(text=f'备份持久文件 {n}/{t}',completed=n,total=t))
+            return dict(result,text='备份完成：'+result['archive'])
+        return self.start(work,'等待当前保存完成，准备完整备份…')
+
+    def library_restore(self):
+        import webview
+        chosen=self.window.create_file_dialog(webview.FileDialog.OPEN,allow_multiple=False,file_types=('备份 ZIP (*.zip)',))
+        if not chosen:return None
+        parent=self.choose_directory()
+        if not parent:return None
+        destination=Path(parent)/('EmojiBridge-restored-'+time.strftime('%Y%m%d-%H%M%S'))/'material-library'
+        def work():
+            from emoji_bridge.library_backup import restore
+            result=restore(chosen[0],destination,self.cancel,lambda n,t:self.task.update(text=f'恢复并校验 {n}/{t}',completed=n,total=t))
+            self.restored_library=result['root']
+            return dict(result,text='恢复完成，原库保留。点击“打开恢复库”后保存当前工作并重启。')
+        return self.start(work,'恢复到新目录，原库保持…')
+
+    def library_open_restored(self):
+        if not self.restored_library:raise ValueError('请先成功恢复备份')
+        if self.transfer.get('active'):return {'accepted':False,'message':'互通结束后可切换素材库'}
+        def work():
+            from emoji_bridge.app_update import launch_helper,current
+            session=APP.parent/('.emojibridge-restore-'+uuid.uuid4().hex);session.mkdir()
+            build=current(APP)
+            if build.get('manual'):raise ValueError('源码模式请用 --data-dir 打开恢复目录：'+str(Path(self.restored_library).parent))
+            plan,process=launch_helper(APP,session,self.restored_library,build,mode='restart',previous_library=self.store.root)
+            self.arm_restart(plan,process)
+            return {'text':'正在保存当前工作，随后打开恢复库。'}
+        return self.start(work,'准备打开恢复库…')
 
     def dependency_status(self):
         from emoji_bridge.background_remove import cache_root,runtime_root,bundled_models
@@ -441,6 +564,35 @@ class DesktopService:
             raise ValueError('组件下载地址未配置')
         webbrowser.open(spec['url']);return True
 
+    def component_install_online(self,ident):
+        from emoji_bridge.release_components import download_install
+        return self.start(lambda:download_install(ident,cancel=self.cancel,
+            progress=lambda label,done,total:self.task.update(text=label,completed=done,total=total)),'准备下载组件…')
+
+    def import_folder(self,recursive=True,collection='',hierarchy=False):
+        directory=self.choose_directory()
+        if not directory:return None
+        def work():
+            from emoji_bridge.cache_listing import enumerate_files
+            base=Path(directory).resolve()
+            files=list(enumerate_files(base)) if recursive else [p for p in base.iterdir() if p.is_file() and not p.is_symlink()]
+            self.task.update(text=f'发现 {len(files)} 个文件',total=len(files),bytes=sum(p.stat().st_size for p in files))
+            from emoji_bridge.collection_tree import ensure
+            root=ensure(self.store,collection or base.name) if hierarchy or collection else None
+            folders={():root}
+            def organize(item,file):
+                node=root
+                if hierarchy:
+                    parts=file.relative_to(base).parts[:-1]
+                    for depth,part in enumerate(parts,1):
+                        key=parts[:depth]
+                        if key not in folders:folders[key]=ensure(self.store,part,node['id'])
+                        node=folders[key]
+                if node:self.store.organize([item['id']],add_collections=[node['legacy_key']])
+            result=self.import_records(((str(p),str(p.relative_to(base)),None,str(p)) for p in files),len(files),on_item=organize)
+            return result
+        return self.start(work,'枚举所选文件夹…')
+
     def component_import(self,ident):
         import webview
         from emoji_bridge.release_components import install,catalog
@@ -465,7 +617,9 @@ class DesktopService:
         for row in rows:
             item={k:row[k] for k in ('id','name','name_origin','display_name','tags','collections','favorite','metadata')}
             item['thumbnail']=f'{self.url}/{self.token}/thumbnail/{row["id"]}?repair={self.media_revision}';items.append(item)
-        revision=self.store.revision();collections=self.store.categories()
+        from emoji_bridge.collection_tree import listing as tree
+        nodes=tree(self.store)
+        revision=self.store.revision();collections=[n['legacy_key'] for n in nodes]
         # Only the existing first six collection shortcuts need covers. Reuse
         # persisted thumbnails, never decode originals on a navigation request.
         if revision!=self.cover_revision:
@@ -475,7 +629,7 @@ class DesktopService:
                 covers.append({'name':name,'count':count,'thumbnails':[
                     f'{self.url}/{self.token}/thumbnail/{member["id"]}?repair={self.media_revision}' for member in members]})
             self.cover_cache=covers;self.cover_revision=revision
-        return {'items':items,'total':total,'collections':collections,'covers':self.cover_cache,'root':str(self.store.root),'revision':revision}
+        return {'items':items,'total':total,'collections':collections,'collection_nodes':nodes,'covers':self.cover_cache,'root':str(self.store.root),'revision':revision}
 
     def start(self,work,label):
         if self.closing:return {'accepted':False,'message':'正在退出，未开始新的操作。'}
@@ -518,18 +672,10 @@ class DesktopService:
                 except (ValueError,OSError,KeyError):continue
             self.local_receipt_stamp=stamp;self.local_receipts=receipts
         receipts=self.local_receipts
-        by_sha={m['source_sha256']:r for r in current if r.get('identity_verified') for m in r['members'] if m.get('source_sha256')}
         for item in self.local_collection_items:
-            ident=item['id'];row=by_sha.get(ident)
-            if row:
-                row['material_id']=ident;row['local']=True
-                if item['name_origin']!='generated':
-                    row.update({k:item[k] for k in ('name','display_name','name_origin')})
-                if 'local' not in row['clients']:row['clients'].append('local')
-                row['members'].append({'client':'local','id':ident,'name':item['name'],'original_label':'本地原件','original_ready':True})
-            else:
-                row={'id':'local:'+ident,'material_id':ident,'local':True,**{k:item[k] for k in ('name','display_name','name_origin')},'clients':['local'],
-                     'members':[{'client':'local','id':ident,'name':item['name'],'original_label':'本地原件','original_ready':True}],
+            ident=item['id']
+            row={'id':'local:'+ident,'material_id':ident,'local':True,**{k:item[k] for k in ('name','display_name','name_origin')},'clients':['local'],
+                     'members':[{'client':'local','id':ident,'source_sha256':ident,'name':item['name'],'original_label':'本地原件','original_ready':True}],
                      'source_count':0,'source_counts':{},'duplicate':False,'duplicate_labels':[],'states':['本地素材'],
                      'ready':True,'original_label':'本地原件','frames':item['metadata'].get('frames',1),'comparison':'local',
                      'has_preview':False,'preview_version':ident,'historical_only':False}
@@ -557,6 +703,8 @@ class DesktopService:
             except OSError:pass
             local.append(row)
         value['local_items']=local;value['local_count']=len(local)
+        from emoji_bridge.collection_view import mark_duplicates
+        mark_duplicates([*current,*local])
         for row in [*current,*value.get('history_items',[]),*local]:row['thumbnail']=f'{self.url}/{self.token}/collection-thumbnail/{row["id"]}?v={row.get("preview_version", "0")}'
         return value
 
@@ -564,6 +712,50 @@ class DesktopService:
         if action=='cancel':self.collections.cancel(client);return True
         if self.transfer.get('active'):raise ValueError('互通正在准备或占用客户端；请等待完成或先取消互通，再更新收藏。')
         return self.collections.request(client,action,ids or (),manual=True,retry=retry)
+
+    def collection_cache_options(self,enabled=None):
+        with self.collections.guard:return self.collections.cache_options(enabled)
+
+    def collection_copy(self,ident,scope,client=None):
+        if not self.copy_guard.acquire(blocking=False):raise ValueError('正在复制，请稍候')
+        try:
+            if ident.startswith('local:'):
+                from emoji_bridge.file_clipboard import copy_media_to_clipboard
+                result=copy_media_to_clipboard(Path(self.drag_files([ident[6:]])[0]),int(self.window.native.Handle.ToInt64()))
+                self.store.mark_used([ident[6:]])
+                return result
+            with self.collections.guard:
+                context=self.collections.context()
+                if not context or context[0].name!=scope:raise ValueError('账号已改变，请重新选择')
+                profile=context[0];library=self.collections.load_library(profile)
+                from emoji_bridge.collection_view import grouped
+                row=next((r for r in grouped(library) if r['id']==ident),None)
+                if not row:raise ValueError('列表已改变，请重新选择')
+                members=[m for m in row['members'] if not m['unseen'] and (not client or m['client']==client)]
+                if not members:raise ValueError('当前来源未读到此项')
+                member=sorted(members,key=lambda m:not m['original_ready'])[0]
+            folder=profile/'runtime-data/clipboard-jobs'/uuid.uuid4().hex;folder.mkdir(parents=True)
+            request=dict(profile=str(profile),client=member['client'],action='copy',ids=[member['id']],
+                         cancel=str(folder/'cancel'),status=str(folder/'status.json'),request=str(folder/'request.json'))
+            save_json(folder/'request.json',request)
+            process=subprocess.Popen([sys.executable,'-X','utf8',str(APP/'scripts/collection_worker.py'),str(folder/'request.json')],
+                stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+            deadline=time.monotonic()+45
+            while process.poll() is None:
+                if self.closing or time.monotonic()>deadline:
+                    Path(request['cancel']).touch()
+                    try:process.wait(3)
+                    except subprocess.TimeoutExpired:process.terminate();process.wait(3)
+                    raise ValueError('复制准备已取消或超时，请稍后重试；没有加入素材库')
+                time.sleep(.05)
+            result=json.loads((folder/'status.json').read_text('utf8'))
+            if process.returncode or result.get('failed') or not result.get('file'):raise ValueError(result.get('text','复制准备失败'))
+            with self.collections.guard:
+                context=self.collections.context()
+                if not context or context[0]!=profile:raise ValueError('账号已切换，旧复制请求已取消')
+            from emoji_bridge.file_clipboard import copy_media_to_clipboard
+            return copy_media_to_clipboard(Path(result['file']),int(self.window.native.Handle.ToInt64()))
+        finally:self.copy_guard.release()
 
     def collection_enrich(self,scope,client,ids,retry=False,priority=False):
         with self.collections.guard:
@@ -696,9 +888,9 @@ class DesktopService:
         if not self.task.get('active'):self.task.update(text=str(text),failed=True)
         return True
 
-    def import_records(self,records,total,kind='file'):
+    def import_records(self,records,total,kind='file',on_item=None):
         from video_tools import VIDEO_EXTENSIONS,own_source
-        added=duplicates=0;errors=[];videos=[];results=[]
+        added=duplicates=restored=0;errors=[];videos=[];results=[]
         try:
             for i,(path,name,error,source) in enumerate(records):
                 if self.cancel.is_set():break
@@ -708,8 +900,9 @@ class DesktopService:
                         owned=own_source(self.store,path,self.cancel);videos.append(owned['path'])
                     else:
                         item,duplicate=self.store.import_file(path,kind=kind,cancel=self.cancel,name=Path(name).stem,source=source)
-                        results.append({'name':name,'id':item['id'],'state':'existing' if duplicate else 'added'})
-                        added+=not duplicate;duplicates+=duplicate
+                        if on_item:on_item(item,Path(path))
+                        results.append({'name':name,'id':item['id'],'state':'restored' if item.get('restored') else 'existing' if duplicate else 'added'})
+                        added+=not duplicate;restored+=bool(item.get('restored'));duplicates+=bool(duplicate and not item.get('restored'))
                 except (CancelledError,InterruptedError):break
                 except Exception as exc:
                     reason='无法读取图片格式，文件可能已损坏' if isinstance(exc,UnidentifiedImageError) else str(exc)
@@ -717,7 +910,7 @@ class DesktopService:
                 self.task.update(text=f'导入 {i+1}/{total}',completed=i+1,total=total)
         except (CancelledError,InterruptedError):pass
         if videos and not self.cancel.is_set():self.open_native('video',paths=videos)
-        return {'text':f'{"已取消；" if self.cancel.is_set() else ""}新增 {added} · 已有 {duplicates} · 视频 {len(videos)} · 失败 {len(errors)}','errors':errors,'import_results':results}
+        return {'text':f'{"已取消；" if self.cancel.is_set() else ""}新增 {added} · 已有 {duplicates} · 已恢复 {restored} · 视频 {len(videos)} · 失败 {len(errors)}','errors':errors,'import_results':results}
 
     def import_paths(self,paths,kind='file'):
         records=((path,Path(path).name,'',None) for path in paths)
@@ -749,6 +942,37 @@ class DesktopService:
     def collection(self,name,rename=None):
         self.store.collection(name,rename)
         return True
+
+    def collection_tree(self,action='list',ident=None,name=None,parent_id=None):
+        from emoji_bridge.collection_tree import listing,ensure,change
+        if action=='create':ensure(self.store,name,parent_id)
+        elif action=='rename':change(self.store,ident,name=name)
+        elif action=='move':change(self.store,ident,parent_id=parent_id)
+        elif action=='update':change(self.store,ident,name=name,parent_id=parent_id)
+        elif action=='delete':change(self.store,ident,delete=True)
+        elif action!='list':raise ValueError('未知合集操作')
+        return listing(self.store)
+
+    def similar_start(self,ids=None,collection=''):
+        def work():
+            from emoji_bridge.similar_materials import candidates
+            result=candidates(self.store,ids or [],collection,self.cancel,
+                lambda n,t:self.task.update(completed=n,total=t,text=f'比较静态素材 {n}/{t}'))
+            self.similar_result=result|{'collection':collection}
+            return {'text':f'比较完成，找到 {len(result["pairs"])} 对候选；请打开相似整理查看，没有修改素材。'}
+        self.similar_result={'pairs':[],'collection':collection}
+        return self.start(work,'查找相似图片…')
+
+    def similar_results(self):
+        result=getattr(self,'similar_result',{'pairs':[]});items={}
+        for pair in result['pairs']:
+            for ident in (pair['left'],pair['right']):
+                if ident in items:continue
+                item=self.store.get(ident)
+                items[ident]={k:item[k] for k in ('id','name','metadata','collections','favorite')}
+                items[ident]['sources']=self.store.sources(ident)
+                items[ident]['thumbnail']=f'{self.url}/{self.token}/thumbnail/{ident}'
+        return dict(result,items=items)
 
     def assign_collection(self,ids,name):
         def work():
@@ -840,6 +1064,7 @@ class DesktopService:
             if not row:raise ValueError('此收藏视图已变化，请更新后重试')
             members=[dict(m) for m in row['members']]
         for m in members:
+            if m.get('cache_file') and Path(m['cache_file']).is_file():return Path(m['cache_file'])
             sha=m.get('source_sha256')
             if sha:
                 try:return self.store.original(sha)

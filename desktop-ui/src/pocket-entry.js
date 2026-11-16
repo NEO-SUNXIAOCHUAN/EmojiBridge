@@ -3,6 +3,7 @@ import './pocket-motion/pocket.css';
 import './pocket-window.css';
 import './scrollbars';
 import './browser-drop';
+import {mountPocketTools} from './pocket-tools';
 
 function ready(){
  const api=window.pywebview.api,edge=location.pathname==='/edge.html';
@@ -22,6 +23,7 @@ function ready(){
   const host={capabilities:{nativeWindow:true,nativeDrag:true},...Object.fromEntries(['chooseImport','setFavorite','openSticker','copyItem','dragItem','prepareItem','setPinned','setCollapsed','close'].map(name=>[name,(...args)=>api[name](...args)])),
    filterChanged:(q,v)=>{query=q;view=v;limit=80;clearTimeout(timer);timer=setTimeout(()=>load(true),120)}};
   component=window.EmojiBridgePocket.mount('#root',{host});
+  mountPocketTools(api,safe);
   document.querySelector('.eb-collapse').onclick=()=>safe(()=>api.hide());
   document.querySelector('.eb-collapse').title='收起 · 快捷键可唤回';
   document.querySelector('.eb-title-wrap').classList.add('pywebview-drag-region');

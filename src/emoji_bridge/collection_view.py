@@ -7,6 +7,9 @@ from .card_names import collection_name_origin, display_fields
 
 
 def original_ready(item):
+    if item.get('cache_file'):
+        return bool(item.get('source_sha256') and item.get('original_state') == 'ready'
+                    and Path(item['cache_file']).is_file())
     # Cached successful original verification, not an identity/thumbnail match.
     # The acquisition pipeline revalidates bytes and provenance on execution.
     return (item.get('original_state') == 'ready' and item.get('original_available') is True
@@ -15,6 +18,8 @@ def original_ready(item):
 
 
 def original_label(item):
+    if item.get('cache_file'):
+        return '完整缓存文件' if original_ready(item) else '缓存已移走，请重新读取'
     if original_ready(item): return '完整文件已校验 · 外观关联' if item.get('matching_basis')=='appearance' else '原件已核验'
     if item.get('original_state')=='ready' and item.get('asset') and not Path(item['asset']).is_file():return '原件记录失效，执行时重新核对'
     if item.get('original_state') in ('failed','unavailable','unsupported'): return '原件获取失败 / 待处理'
@@ -115,7 +120,7 @@ def extend_visible_qq(previous,visible):
     return sorted([*visible,*tail],key=position),dict(visible=len(visible),preserved=len(tail),offset=shift,anchors=count)
 
 
-def grouped(library,owned=(),history=None,owned_content=()):
+def _content_groups(library,owned=(),history=None,owned_content=()):
     history=history or {};owned=set(owned);owned_content=set(owned_content);entries=[];parent=[];lookup={}
     def root(i):
         while parent[i]!=i:parent[i]=parent[parent[i]];i=parent[i]
@@ -153,7 +158,8 @@ def grouped(library,owned=(),history=None,owned_content=()):
                 'original_state':item.get('original_state'),'original_available':bool(item.get('original_available')),
                 'original_ready':original_ready(item),'original_label':original_label(item),
                 'enrichment_state':item.get('enrichment_state'),'enrichment_error':item.get('enrichment_error'),'enrichment_at':item.get('enrichment_at'),
-                'last_read_failure':side.get('last_read_failure'),'asset':item.get('asset'),'managed_original':item.get('managed_original'),'unseen':bool(item.get('unseen'))})
+                'last_read_failure':side.get('last_read_failure'),'asset':item.get('asset'),'cache_file':item.get('cache_file'),
+                'managed_original':item.get('managed_original'),'unseen':bool(item.get('unseen'))})
         item=next((i for _,i,_ in entries if i.get('clear_preview') and Path(i['clear_preview']).is_file()),None) or next((i for _,i,_ in entries if i.get('preview')),entries[0][1])
         # Adding another source must not change the content card identity.
         identities=sorted({str(k)+':'+v for _,i,_ in entries for k,v in keys(i)}) or sorted(c+':'+i['id'] for c,i,_ in entries)
@@ -200,3 +206,51 @@ def grouped(library,owned=(),history=None,owned_content=()):
             row['comparison']='suspected'
             row['states']=[s for s in row['states'] if not s.startswith('待比对')]+[f'疑似与 {len(related)} 组相同 · 外观关联未精确确认']
     return output
+
+
+def mark_duplicates(rows):
+    """Annotate complete-content matches without merging source identities."""
+    index={}
+    for row in rows:
+        if row.get('historical_only'):continue
+        identities=set()
+        for member in row['members']:
+            if (row.get('identity_verified') or member.get('client')=='local') and member.get('source_sha256'):identities.add(('sha256',member['source_sha256']))
+            if row.get('identity_verified') and member.get('content_key'):
+                identities.add(('content_key',member['content_key']))
+        for key in identities:index.setdefault(key,{})[row['id']]=row
+        row['_exact_keys']=identities
+    for row in rows:
+        related={ident:other for key in row.pop('_exact_keys',()) for ident,other in index[key].items() if ident!=row['id']}
+        row['duplicate']=bool(related)
+        row['duplicate_with']=sorted(related)
+        clients=sorted({c for other in related.values() for c in other['clients']})
+        row['duplicate_labels']=['与 '+ '、'.join({'qq':'QQ 缓存','wechat':'微信来源','local':'素材库'}.get(c,c) for c in clients)+' 内容重复'] if clients else []
+        if related:row['comparison']='confirmed'
+    for row in rows:
+        if row.get('identity_verified') or row.get('historical_only'):continue
+        suspected={ident for m in row['members'] for key in (('sha256',m.get('source_sha256')),('content_key',m.get('content_key')))
+                   for ident in index.get(key,{}) if ident!=row['id']}
+        row['suspected_with']=sorted(suspected)
+        if suspected:row['comparison']='suspected'
+    return rows
+
+
+def grouped(library,owned=(),history=None,owned_content=()):
+    """One card per source entry; content equality is only an annotation."""
+    result=[]
+    for client,side in library.get('clients',{}).items():
+        if client not in ('qq','wechat'):continue
+        entries={}
+        for item in side.get('items',[]):entries.setdefault(item['id'],item)
+        for ident,item in entries.items():
+            single=dict(side,items=[item],unseen_observations=[])
+            rows=_content_groups({'clients':{client:single}},owned,history,owned_content)
+            for row in rows:
+                row['id']=hashlib.sha256((client+'\0'+ident).encode()).hexdigest()
+            result.extend(rows)
+        # Retain legacy history as history, never as additional current entries.
+        for record in side.get('unseen_observations',[]):
+            single=dict(side,items=[],unseen_observations=[record])
+            result.extend(_content_groups({'clients':{client:single}},owned,history,owned_content))
+    return mark_duplicates(result)

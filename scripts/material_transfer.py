@@ -5,7 +5,7 @@ import uuid
 
 from emoji_bridge.materials import MaterialStore, now
 from emoji_bridge.media import prepare_asset, load_asset, inspection_session
-from emoji_bridge.state import save_json, single_instance
+from emoji_bridge.state import save_json, single_instance, sha
 from emoji_bridge.wechat_index import key_scan_session
 
 
@@ -60,7 +60,9 @@ def recovery_text(plan):
     waiting=sum(j.get('status')=='waiting_original' for j in jobs)
     if waiting:
         reasons=list(dict.fromkeys(j.get('reason','原件尚未取得') for j in jobs if j.get('status')=='waiting_original'))
-        return f'等待原件 {waiting} 项，任务尚未完成。'+ '；'.join(reasons[:2])+' 打开来源客户端的表情收藏，待原图加载后点“继续 / 重试未完成”；沿用本任务。'
+        action=(' 请确认所选缓存目录仍可读取、文件已完整写入，再点“继续 / 重试未完成”；沿用本任务。'
+                if plan.get('source_client')=='qq' else ' 打开来源客户端的表情收藏，待原图加载后点“继续 / 重试未完成”；沿用本任务。')
+        return f'等待原件 {waiting} 项，任务尚未完成。'+ '；'.join(reasons[:2])+action
     if jobs and all(job_stage(j) in ('已确认收藏','用户已确认完成') for j in jobs):return '本次收藏已确认；作品和结果已保留。'
     if any(j.get('staged_recovery_requires_confirmation') and job_stage(j) not in ('已确认收藏','用户已确认完成') for j in jobs):
         return '旧草稿已不在助手输入框中。点“继续 / 重试未完成”确认是否手动发送过；只有确认未发送，才会重新选入这些文件。'
@@ -99,6 +101,7 @@ def prior_jobs(store, plan, profile, current):
     """Only durable same-account/same-target/same-bytes evidence may be inherited."""
     from emoji_bridge.catalog import read
     found = {}
+    def identity(job):return job.get('source_sha256') or job['item_id'].removeprefix('source:')
     for file in sorted((store.root / 'tasks').glob('*.json'), reverse=True):
         if file.resolve() == current.resolve(): continue
         try: previous = read(file)
@@ -106,11 +109,12 @@ def prior_jobs(store, plan, profile, current):
         if (not previous.get('profile') or Path(previous['profile']).resolve()!=Path(profile).resolve()
                 or previous.get('target') != plan['target']):continue
         for job in previous.get('jobs', []):
-            if job['item_id'] in found: continue
+            key=identity(job)
+            if key in found: continue
             if (job.get('collection_verified') or job.get('status') in ('desktop_confirmed', 'already_exists', 'add_executed')
                     or job.get('submission_state') == 'may_have_started'):
-                found[job['item_id']] = {**job, 'previous_plan': str(file)}
-    return found
+                found[key] = {**job, 'previous_plan': str(file)}
+    return {j['item_id']:found[identity(j)] for j in plan['jobs'] if identity(j) in found}
 
 
 def refresh_target(target, cancel, progress=None):
@@ -135,10 +139,12 @@ def _refresh_target_locked(target,cancel,progress=None):
         after=catalog.read(catalog.PATH)['clients']['wechat']
         result.update(wechat_recent_ids=sorted(observed_ids(after)-before),wechat_snapshot=list(snapshot_key(after)))
     else:
-        from qq_catalog import scan, MAX_SCAN_VIEWS
-        path, value = scan(MAX_SCAN_VIEWS, cancel)
-        if not value.get('items'): raise ValueError(value.get('reason', 'QQ 收藏列表未读到；原结果保留'))
-        library = catalog.read(catalog.PATH); catalog.merge_qq(library, path, cancel=cancel.exists, match_originals=False); catalog.save(library)
+        from emoji_bridge.cache_listing import scan,catalog_side
+        profile=catalog.PATH.parents[2]
+        choice=json.loads((profile/'runtime-data/client-sources.json').read_text('utf8'))
+        if not choice.get('qq_ori'):return {'state':'unavailable','reason':'未配置 QQ 缓存目录；互通结果保留'}
+        index=scan(choice['qq_ori'],profile/'runtime-data/cache-read/qq.json',cancel=cancel.exists)
+        library=catalog.read(catalog.PATH);library['clients']['qq']=catalog_side(index);catalog.save(library)
     return result
 
 
@@ -153,7 +159,7 @@ def create(store, ids, target, path):
         jobs.append({'id': str(uuid.uuid4()), 'item_id': ident, 'name': item['name'],
                      'source_sha256': ident, 'target': target, 'status': 'queued',
                      'attempts': 0, 'submission_state': 'not_started'})
-    plan = {'schema': 'selected-transfer-v1', 'source_kind': 'local_material_library',
+    plan = {'schema': 'selected-transfer-v1', 'source_kind': 'local_material_library','intent_id':uuid.uuid4().hex,
             'library_root': str(store.root), 'target': target, 'jobs': jobs, 'created': now(),
             'scope': 'explicit user-imported files; not claimed as client favorites'}
     from emoji_bridge.compatibility_copy import settings
@@ -215,6 +221,10 @@ def run(path, data_root, *, resume=False, clear_cancel=True, progress=None, pref
             prior = prior_jobs(store, plan, data_root, path)
             for job in plan['jobs']:
                 if job.get('attempts', 0) == 0 and job['item_id'] in prior:
+                    previous=prior[job['item_id']]
+                    if plan.get('intent_id') and (previous.get('collection_verified') or previous.get('status') in ('desktop_confirmed','already_exists')):
+                        job['previous_completed_intent']={'plan':previous['previous_plan'],'result':previous.get('result')}
+                        continue
                     # Reuse target evidence, never overwrite this selection's
                     # source observation/binding with a different earlier row.
                     fields=('status','attempts','submission_state','result','previous_plan',
@@ -247,7 +257,8 @@ def run(path, data_root, *, resume=False, clear_cancel=True, progress=None, pref
                 try:
                     if job.get('target_asset'):
                         load_asset(job['target_asset']); continue
-                    source = store.original(job['item_id'])
+                    source = Path(job['source_file']) if job.get('source_file') else store.original(job['item_id'])
+                    if job.get('source_file') and sha(source)!=job['source_sha256']:raise ValueError('任务原件内容已变化')
                     from client_material_import import Cancel
                     asset, info = prepare_asset(source, plan['target'], data_root / 'runtime-data/material-assets',cancel=Cancel(cancel),**plan.get('compatibility',{}))
                     job.update(source_asset=str(asset), target_asset=str(asset), conversion=info['conversion'],
@@ -289,8 +300,8 @@ def run(path, data_root, *, resume=False, clear_cancel=True, progress=None, pref
                 def source_check(asset):
                     check_profile(plan, data_root)
                     info = load_asset(asset)
-                    store.original(info['source_sha256'])
-                    return {'status': 'already_exists', 'method': 'owned_original_digest', 'report_path': str(store.db)}
+                    if sha(Path(info['original_copy']))!=info['source_sha256']:raise ValueError('任务原件校验失败')
+                    return {'status': 'already_exists', 'method': 'owned_original_digest', 'report_path': str(asset)}
 
                 # Retry only proven pre-submit failures; native ledger still guards unknowns.
                 if resume:
@@ -315,7 +326,8 @@ def run(path, data_root, *, resume=False, clear_cancel=True, progress=None, pref
                     config = settings()
                     source = config.get('wechat_emoticon_db') if config.get('read_authorized') else None
                     # Same authenticated membership check, no previous full-library scan required.
-                    wx_execute = partial(execute, index_source=source, retry_approvals=approvals)
+                    completed=[str(Path(j['target_asset']).resolve()) for j in plan['jobs'] if j.get('target_asset') and j.get('previous_completed_intent') and not j.get('attempts')]
+                    wx_execute = partial(execute, index_source=source, retry_approvals=approvals,new_intent_completed=completed)
 
                 def merge(result):
                     for job in plan['jobs']:

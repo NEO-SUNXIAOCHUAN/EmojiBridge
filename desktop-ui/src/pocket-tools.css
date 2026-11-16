@@ -1,0 +1,8 @@
+.eb-nav{flex-wrap:wrap;gap:8px;padding-bottom:10px!important}.eb-tabs{flex-shrink:0}.eb-tab{padding-left:10px!important;padding-right:10px!important}.eb-count{flex-basis:100%;text-align:right;font-size:11px;line-height:1;margin-top:-2px}
+.pocket-drawing-tools{margin-left:auto;display:flex;align-items:center;gap:2px;border-left:1px solid #343a45;padding-left:8px}
+.pocket-drawing-tools button{display:grid;place-items:center;width:30px;height:30px;padding:5px;background:transparent;border:0;border-radius:8px;color:#cbd4e3;cursor:pointer}
+.pocket-drawing-tools button:hover{background:#2a3343;color:#fff}.pocket-drawing-tools button:focus-visible,.pocket-context button:focus-visible{outline:2px solid #94bafa;outline-offset:1px}.pocket-drawing-tools button:disabled{opacity:.5;cursor:wait}
+.pocket-drawing-tools svg,.pocket-context svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.pocket-context{position:fixed;z-index:50;width:220px;padding:6px;background:#20252e;border:1px solid #485365;border-radius:12px}
+.pocket-context button{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;text-align:left;background:transparent;border:0;border-radius:8px;color:#eef2fa;font:inherit;cursor:pointer}.pocket-context button:hover{background:#30394a}.pocket-context small{display:block;color:#b9c6d9;font-size:11px;margin-top:2px}
+@media(max-width:350px){.eb-nav{padding-left:12px!important;padding-right:12px!important;gap:4px}.eb-tab{padding-left:7px!important;padding-right:7px!important}.pocket-drawing-tools{padding-left:5px}.pocket-drawing-tools button{width:28px}}

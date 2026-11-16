@@ -12,8 +12,9 @@ import tempfile
 from PIL import Image, ImageOps
 from .frame_store import inspect_local as inspect, MAX_INPUT_BYTES
 from .state import sha
+from .library_gate import hold,store_write
 
-EXTENSIONS = {'PNG': '.png', 'JPEG': '.jpg', 'GIF': '.gif', 'WEBP': '.webp'}
+EXTENSIONS = {'PNG': '.png', 'JPEG': '.jpg', 'GIF': '.gif', 'WEBP': '.webp', 'BMP': '.bmp'}
 
 
 def is_dynamic(metadata):
@@ -71,6 +72,8 @@ class MaterialStore:
                     material_id TEXT PRIMARY KEY, used TEXT NOT NULL);
             ''')
         self._migrate(existed)
+        from .collection_tree import migrate
+        migrate(self)
 
     def _migrate(self, existed):
         with self.connect() as conn:
@@ -102,27 +105,27 @@ class MaterialStore:
             for table in ('materials','sources','material_usage','collections','memberships','material_flags'):
                 for action in ('INSERT','UPDATE','DELETE'):
                     conn.execute(f'CREATE TRIGGER IF NOT EXISTS revision_{table}_{action} AFTER {action} ON {table} BEGIN UPDATE library_revision SET value=value+1; END')
-            conn.execute('PRAGMA user_version=2')
+            if conn.execute('PRAGMA user_version').fetchone()[0]<2:conn.execute('PRAGMA user_version=2')
 
     def revision(self):
         # GUI watchers may skip one tick while a writer commits; never wait ten
         # seconds for SQLite on Tk's thread. The next tick retries the read.
         try:
-            with self.connect(timeout=.01) as conn:return conn.execute('SELECT value FROM library_revision').fetchone()[0]
+            with self.connect(timeout=.01,read_only=True) as conn:return conn.execute('SELECT value FROM library_revision').fetchone()[0]
         except sqlite3.OperationalError as exc:
             if 'locked' in str(exc).lower() or 'busy' in str(exc).lower():return None
             raise
 
     @contextmanager
-    def connect(self,*,timeout=10):
+    def connect(self,*,timeout=10,read_only=False):
         # A connection per operation: background imports never share GUI connections.
-        conn = sqlite3.connect(self.db, timeout=timeout)
-        conn.row_factory = sqlite3.Row
-        try:
-            with conn:
-                yield conn
-        finally:
-            conn.close()
+        from contextlib import nullcontext
+        with nullcontext() if read_only else hold(self.root):
+            conn = sqlite3.connect(self.db, timeout=timeout)
+            conn.row_factory = sqlite3.Row
+            try:
+                with conn:yield conn
+            finally:conn.close()
 
     def _row(self, row):
         if row is None:
@@ -189,15 +192,10 @@ class MaterialStore:
             return [r[0] for r in conn.execute('SELECT name FROM collections ORDER BY name')]
 
     def collection(self,name,rename=None):
-        name=name.strip();new=name if rename is None else rename.strip()
-        if not name or not new or max(len(name),len(new))>100 or '\x1f' in name+new:raise ValueError('合集名须为1～100个字符')
-        with self.connect() as conn:
-            if rename is None:conn.execute('INSERT OR IGNORE INTO collections VALUES (?,?)',(name,now()))
-            elif new!=name:
-                if conn.execute('SELECT 1 FROM collections WHERE name=?',(new,)).fetchone():raise ValueError('新合集名称已经存在')
-                conn.execute('UPDATE collections SET name=? WHERE name=?',(new,name))
-                conn.execute('UPDATE memberships SET name=? WHERE name=?',(new,name))
-                conn.execute('UPDATE materials SET category=? WHERE category=?',(new,name))
+        from .collection_tree import ensure, change
+        node=ensure(self,name)
+        if rename is not None:change(self,node['id'],name=rename)
+        return node['id']
 
     def organize(self,ids,*,add_tags=(),remove_tags=(),add_collections=(),remove_collections=(),favorite=None,deleted=None):
         additions=tags_from(add_tags);removals=set(tags_from(remove_tags))
@@ -224,6 +222,7 @@ class MaterialStore:
             # lexicographically greatest random draft id from the UNIQUE index.
             return [dict(r) for r in conn.execute('SELECT kind,value,imported FROM sources WHERE material_id=? ORDER BY imported,rowid', (ident,))]
 
+    @store_write
     def import_file(self, path, *, kind='file', name=None, source=None, cancel=None, expected_sha=None, name_origin=None):
         """Copy first, then fully validate the owned snapshot, then commit metadata."""
         if kind not in ('file', 'drop', 'clipboard_files', 'clipboard_bitmap', 'edited','qq','wechat','builtin'):
@@ -249,6 +248,8 @@ class MaterialStore:
             if expected_sha and ident!=expected_sha:raise ValueError('所选原件内容已变化，未入库')
             with self.connect() as conn:
                 row = conn.execute('SELECT * FROM materials WHERE id=?', (ident,)).fetchone()
+                flag=conn.execute('SELECT deleted FROM material_flags WHERE material_id=?',(ident,)).fetchone()
+                restored=bool(flag and flag[0])
             duplicate = row is not None
             if duplicate:
                 item = self._row(row)
@@ -285,7 +286,8 @@ class MaterialStore:
                 duplicate=inserted.rowcount==0
                 conn.execute('INSERT OR IGNORE INTO sources VALUES (?,?,?,?)', (ident, kind, value, stamp))
                 conn.execute('UPDATE material_flags SET deleted=0 WHERE material_id=?',(ident,))
-            return self.get(ident), duplicate
+            result=self.get(ident);result['restored']=restored
+            return result, duplicate
 
     def import_bitmap(self, image, cancel=None):
         """The clipboard did not supply an original/GIF; record a new static PNG."""

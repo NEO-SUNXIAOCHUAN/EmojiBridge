@@ -4,10 +4,14 @@ No process-name killing/PID walking. The non-inheritable job handle lives in
 the host; the OS closes it even when Task Manager terminates the host.
 """
 import os
+import threading
+from contextlib import contextmanager
 _handle=None
+_breakaway_lock=threading.Lock()
+_set_flags=None
 
 def install():
-    global _handle
+    global _handle,_set_flags
     if os.name!='nt' or _handle:return bool(_handle)
     import ctypes
     from ctypes import wintypes as w
@@ -25,4 +29,23 @@ def install():
     if not k.SetInformationJobObject(handle,9,ctypes.byref(limits),ctypes.sizeof(limits)) or not k.AssignProcessToJobObject(handle,k.GetCurrentProcess()):
         error=ctypes.get_last_error();k.CloseHandle(handle);raise ctypes.WinError(error)
     _handle=handle
+    def set_flags(flags):
+        limits=Limits();limits.basic.flags=flags
+        if not k.SetInformationJobObject(handle,9,ctypes.byref(limits),ctypes.sizeof(limits)):
+            raise ctypes.WinError(ctypes.get_last_error())
+    _set_flags=set_flags
     return True
+
+
+@contextmanager
+def updater_breakaway():
+    """Permit only the updater spawn to leave the job, then restore ownership.
+
+    Leaving BREAKAWAY_OK enabled for the entire GUI lifetime also permits
+    Chromium's own breakaway requests and weakens normal shutdown cleanup.
+    """
+    with _breakaway_lock:
+        if _set_flags:_set_flags(0x2000|0x800)
+        try:yield
+        finally:
+            if _set_flags:_set_flags(0x2000)

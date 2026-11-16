@@ -18,7 +18,22 @@ def sha(path):
 
 
 def save_json(path, value, *, compact=False):
+    path=Path(path).resolve()
+    library=next((p for p in path.parents if (p/'materials.db').is_file()),None)
+    if library:
+        from .library_gate import hold
+        with hold(library):return _save_json(path,value,compact=compact)
+    return _save_json(path,value,compact=compact)
+
+
+def _save_json(path, value, *, compact=False):
     path = Path(path).resolve()
+    # The unique staging suffix can cross MAX_PATH even when the final record
+    # is readable. Use extended paths for this atomic I/O only; stored paths
+    # and caller-facing identities remain ordinary absolute paths.
+    if os.name == 'nt' and not str(path).startswith('\\\\?\\'):
+        text=str(path)
+        path=Path('\\\\?\\UNC\\'+text[2:] if text.startswith('\\\\') else '\\\\?\\'+text)
     path.parent.mkdir(parents=True, exist_ok=True)
     # Concurrent saves must never share or replace another writer's staging
     # file. Keep it on the destination volume for atomic replacement.

@@ -5,8 +5,8 @@ ROOT=Path(__file__).resolve().parents[1]
 TOP={'LICENSE','COPYRIGHT.md','README.md','THIRD_PARTY_NOTICES.md','RELEASE_RIGHTS.md',
      'RELEASE_NOTES.md','FEATURES.md','BUILDING.md','TEMPLATE_CATALOG.json','RELEASE_COMPONENTS.json','requirements-release.txt','requirements-cutout.txt'}
 BUILD_SCRIPTS={'build_pilot.py','build_release_variants.py','export_public_source.py',
-               'portable_launcher.cs','portable_launcher.manifest'}
-DOCS={'portable-使用说明.txt','pilot-使用说明.txt','demo-使用说明.txt','S0146-候选包使用说明.txt'}
+               'portable_launcher.cs','portable_launcher.manifest','package_release_S0176.py','package_release_S0183.py'}
+DOCS={'T008-cache-workflow-S0176.md','S0176-agent-wechat-evaluation.md','portable-使用说明.txt','pilot-使用说明.txt','demo-使用说明.txt','S0146-候选包使用说明.txt'}
 def selected(name):
     p=Path(name)
     if name in TOP:return True
@@ -15,7 +15,7 @@ def selected(name):
     if p.parts[0]=='scripts':
         return p.name in BUILD_SCRIPTS or (not p.name.startswith(('check_','drop_','build_'))
             and (p.suffix in ('.py','.ps1') or p.name=='qq_accessible.cs'))
-    return (p.parts[0]=='tests' and p.name in ('test_builtin_upgrade_S0162.py','test_download_startup_S0168.py','test_release_paths_S0174.py','test_visual_white_S0175.py','test_qq_staged_S0175.py','test_creation_controls_S0175.py')) or (p.parts[0]=='docs' and p.name in DOCS)
+    return (p.parts[0]=='tests' and p.name in ('test_builtin_upgrade_S0162.py','test_download_startup_S0168.py','test_release_paths_S0174.py','test_visual_white_S0175.py','test_qq_staged_S0175.py','test_creation_controls_S0175.py','test_collections_S0112.py','test_collections_S0120.py')) or (p.parts[0]=='docs' and p.name in DOCS)
 def digest(data):return hashlib.sha256(data).hexdigest()
 def export(destination):
     destination=Path(destination).resolve()

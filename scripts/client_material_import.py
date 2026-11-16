@@ -12,6 +12,7 @@ from emoji_bridge.media import inspection_session
 
 def binding(item):
     value=[item['id'],item.get('scan'),item.get('member',{}).get('md5')]
+    if item.get('cache_file'):value.append(item.get('source_sha256'))
     return hashlib.sha256(json.dumps(value,sort_keys=True).encode()).hexdigest()
 
 
@@ -84,29 +85,6 @@ def run(path,library_path,store,cancel,*,progress=None,acquire=None,verify=None)
     path=Path(path);cancel=Path(cancel);token=Cancel(cancel);plan=catalog.read(path)
     library=catalog.read(library_path);client=plan['client'];options=plan['options']
     reused={}
-    requested={j['item_id']:j['binding'] for j in plan['jobs']}
-    if verify is None:
-        for item in library['clients'][client]['items']:
-            if token.is_set():break
-            if requested.get(item['id'])==binding(item):
-                found=reusable_original(client,item,store,Path(library_path).resolve().parents[2])
-                if found:reused[item['id']]=found
-    # Reuse the already supported dated-snapshot preparation before asking QQ
-    # for a second foreground visit. Its receipt keeps appearance uncertainty;
-    # it never grants exact cross-platform overlap or live membership.
-    if client=='qq' and options.get('acquire',True) and acquire is None and verify is None:
-        current={i['id']:i for i in library['clients'][client]['items']}
-        from qq_appearance_prepare import needs_refinement
-        pending=[j['item_id'] for j in plan['jobs'] if j['status'] not in ('added','existing')
-                 and j['item_id'] in current and binding(current[j['item_id']])==j['binding']
-                   and j['item_id'] not in reused and (current[j['item_id']].get('original_state')!='ready' or needs_refinement(current[j['item_id']]))]
-        if pending:
-            from qq_appearance_prepare import prepare
-            if progress:progress(0,len(pending),'校验所选收藏的本地原件与来源')
-            try:prepare(library_path,cancel,ids=pending,progress=lambda n,t:progress(n,t,'校验所选本地原件') if progress else None)
-            except (OSError,ValueError):
-                if token.is_set():plan['run_state']='cancelled';save_json(path,plan);return plan
-            library=catalog.read(library_path)
     known={i['id']:i for i in library['clients'][client]['items']};last_flush=time.monotonic();changed=False
     def record():
         plan['counts']=dict(Counter(j['status'] for j in plan['jobs']));save_json(path,plan)
@@ -118,34 +96,8 @@ def run(path,library_path,store,cancel,*,progress=None,acquire=None,verify=None)
         try:
             item=known.get(job['item_id'])
             if not item or binding(item)!=job['binding']:raise ValueError('所选收藏记录已改变，请从当前列表重新选择')
-            if item['id'] not in reused and item.get('original_state')!='ready':
-                if not options.get('acquire',True):
-                    job.update(status='waiting',reason='只有预览，原件尚未取得');continue
-                if progress:progress(n,len(plan['jobs']),'取得所选原件')
-                if acquire:result=acquire(client,item,library['clients'][client].get('source_report'),cancel)
-                elif client=='wechat':
-                    from wechat_acquire import acquire_selected
-                    result=acquire_selected(item,library['clients'][client].get('source_report'),cancel)
-                else:
-                    if not options.get('allow_source_ui',True):
-                        job.update(status='waiting',reason='所选 QQ 表情的完整原件仍未取得或对应不明确；已保留任务，待来源加载后点“继续 / 重试未完成”，无需等待其他条目')
-                        continue
-                    from qq_cache_acquire import acquire_or_resume
-                    result=acquire_or_resume(item,cancel)
-                catalog.apply_acquisition(item,result);changed=True
-                if token.is_set():job['status']='queued';break
-                if item.get('original_state')!='ready':
-                    job.update(status='waiting',reason=result.get('reason','原件未取得或收藏关联待核验'));continue
-            try:
-                original,digest,source=reused.get(item['id']) or (verify or verified_original)(client,item)
-            except (OSError,ValueError) as exc:
-                if verify is None:
-                    # A vanished/changed receipt is no longer a ready original.
-                    # Keep the observation and old files, but let an explicit
-                    # retry re-enter the supported acquisition path.
-                    item.update(original_state='unavailable',original_available=False,reason='已有原件核验失效：'+str(exc));changed=True
-                    raise ValueError('已有原件核验未通过；请在来源客户端打开该收藏后重试获取原件。'+str(exc)) from exc
-                raise
+            from collection_files import original as selected_original
+            original,digest,source=selected_original(client,item,library,Path(library_path).resolve().parents[2],cancel)
             source=dict(source,source_binding=binding(item),profile_scope=str(Path(library_path).resolve().parents[2]))
             from emoji_bridge.card_names import collection_name_origin
             material,duplicate=store.import_file(original,kind=client,name=item.get('label'),name_origin=collection_name_origin(item,client),source=json.dumps(source,ensure_ascii=False,sort_keys=True),expected_sha=digest,cancel=token)

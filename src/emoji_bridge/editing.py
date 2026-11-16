@@ -612,6 +612,15 @@ def layered_collage(images, source_ids, layout='vertical', gap=12, background=(0
 
 
 def save_scene(document, directory, name='创作草稿', extra=None,*,cancel=None):
+    from .library_gate import hold
+    from contextlib import nullcontext
+    directory=Path(directory)
+    library=next((p for p in directory.resolve().parents if (p/'materials.db').is_file()),None)
+    with hold(library,cancel) if library else nullcontext():
+        return _save_scene(document,directory,name,extra,cancel=cancel)
+
+
+def _save_scene(document, directory, name='创作草稿', extra=None,*,cancel=None):
     """Owned PNG snapshots + atomic scene JSON; no pickle or temporary-file references."""
     import hashlib
     from .state import save_json

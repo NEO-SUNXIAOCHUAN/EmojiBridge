@@ -9,6 +9,8 @@
     const root=typeof target==='string'?document.querySelector(target):target;
     if(!root)throw new Error('Pocket mount target is missing');
     const host=options.host||global.EmojiBridgePocketHost||{};
+    let copyTail=Promise.resolve();
+    const copyItem=item=>{const result=copyTail.then(()=>call('copyItem',item));copyTail=result.catch(()=>{});return result};
     let items=[...(options.items||[])],selected=new Set(),tab='recent',query='',pinned=false,collapsed=false,toastTimer,dragDepth=0,destroyed=false;
     root.innerHTML=`<section class="eb-pocket" aria-label="随手素材"><header class="eb-header"><div class="eb-logo">${svg('bridge')}</div><div class="eb-title-wrap"><div class="eb-title">随手素材</div><div class="eb-subtitle">EMOJIBRIDGE</div></div><div class="eb-window-actions"><button class="eb-icon-button eb-pin" title="临时置顶" aria-label="临时置顶" aria-pressed="false">${svg('pin')}</button><button class="eb-icon-button eb-collapse" title="收起" aria-label="收起" aria-expanded="true">${svg('collapse')}</button><button class="eb-icon-button danger eb-close" title="关闭素材窗" aria-label="关闭素材窗">${svg('close')}</button></div></header><div class="eb-body"><div class="eb-search-wrap"><label class="eb-search">${svg('search')}<input type="search" placeholder="找一张表情…" aria-label="搜索素材"><span class="eb-key">⌘ /</span></label></div><div class="eb-nav"><div class="eb-tabs" role="tablist" aria-label="素材范围"><button class="eb-tab active" role="tab" aria-selected="true" data-tab="recent" title="最近添加的 24 项">最近</button><button class="eb-tab" role="tab" aria-selected="false" data-tab="favorite">常用</button><button class="eb-tab" role="tab" aria-selected="false" data-tab="all">全部</button></div><span class="eb-count"></span></div><div class="eb-view"><div class="eb-grid" role="listbox" aria-label="素材列表" aria-multiselectable="true"></div><div class="eb-empty" hidden>${svg('grid')}<span>还没有找到素材</span><small>换个词，或者拖入一张图片</small></div></div><footer class="eb-footer"></footer></div><div class="eb-drop-overlay"><div class="eb-drop-symbol">${svg('tray')}</div><div class="eb-drop-title">松手，加入素材库</div><div class="eb-drop-copy">图片与 GIF，原样收好</div></div><div class="eb-toast" role="status" aria-live="polite"></div><input class="eb-hidden-input" type="file" multiple accept="image/png,image/jpeg,image/gif,image/webp"></section>`;
     const shell=root.querySelector('.eb-pocket'),grid=root.querySelector('.eb-grid'),empty=root.querySelector('.eb-empty'),footer=root.querySelector('.eb-footer'),search=root.querySelector('input[type=search]'),input=root.querySelector('input[type=file]'),toastEl=root.querySelector('.eb-toast');
@@ -23,7 +25,7 @@
       if(!picked.length){footer.innerHTML=`<div class="eb-footer-hint">${svg('tray')}<span>拖入收集 · 选中后即可使用</span></div><button class="eb-add" title="导入图片" aria-label="导入图片">${svg('add')}</button>`;footer.querySelector('.eb-add').onclick=()=>call('chooseImport').catch(e=>toast(e.message));return;}
       const first=picked[0];footer.innerHTML=`<div class="eb-selection"><img class="eb-selection-thumb" src="${esc(safeImage(first.src))}" alt=""><div><div class="eb-selection-name">${esc(picked.length===1?first.name:('已选 '+picked.length+' 项'))}</div><div class="eb-selection-meta">${esc(picked.length===1?(first.format||'图片'): '可批量悬浮')}</div></div></div><button class="eb-action primary eb-open-sticker">${svg('sticker')}贴到屏幕</button><button class="eb-action eb-action-square eb-copy" title="复制素材" aria-label="复制素材" ${picked.length!==1?'disabled':''}>${svg('copy')}</button><button class="eb-action eb-action-square eb-drag" title="拖出使用" aria-label="拖出使用" ${picked.length!==1?'disabled':''} draggable="${picked.length===1}">${svg('drag')}</button>`;
       footer.querySelector('.eb-open-sticker').onclick=async()=>{try{for(const item of picked)await call('openSticker',item);toast(host.capabilities?.nativeWindow?'贴图已放到屏幕上':'已在当前页面打开贴图');}catch(e){toast(e.message);}};
-      footer.querySelector('.eb-copy').onclick=async()=>{try{const result=await call('copyItem',first);toast(result?.message||'已复制');}catch(e){toast(e.message);}};
+      footer.querySelector('.eb-copy').onclick=async()=>{try{const result=await copyItem(first);toast(result?.message||'已复制');}catch(e){toast(e.message);}};
       const dragBtn=footer.querySelector('.eb-drag');
       if(host.capabilities?.nativeWindow&&!host.capabilities?.nativeDrag){dragBtn.disabled=true;dragBtn.draggable=false;dragBtn.title='桌面原件拖出待接入';dragBtn.setAttribute('aria-label','桌面原件拖出待接入');}
       else{dragBtn.ondragstart=e=>startDrag(e,first);dragBtn.onmouseenter=()=>call('prepareItem',first).catch(e=>toast(e.message));dragBtn.onclick=()=>toast('按住此按钮，拖到接收图片的窗口');}
@@ -39,9 +41,12 @@
         if(!el){
           el=document.createElement('div');el.className='eb-item';el.tabIndex=0;el.setAttribute('role','option');el.dataset.id=item.id;
           el.innerHTML=`<img alt="" loading="lazy" decoding="async"><span class="eb-check">${svg('check')}</span><button class="eb-star">${svg('star')}</button><span class="eb-format"></span><button class="eb-retry" hidden>预览重试</button>`;
-          el.onclick=e=>choose(el._item.id,e);el.onkeydown=e=>{if(e.target!==el)return;if(e.key==='Enter'||e.key===' '){e.preventDefault();choose(el._item.id,e)}};
-          el.ondblclick=async()=>{try{await call('openSticker',el._item)}catch(e){toast(e.message)}};
-          el.draggable=!(host.capabilities?.nativeWindow&&!host.capabilities?.nativeDrag);el.ondragstart=e=>startDrag(e,el._item);
+          let clickTimer,down,dragged=false;
+          el.onpointerdown=e=>{down=[e.clientX,e.clientY];dragged=false};
+          el.onpointermove=e=>{if(down&&Math.hypot(e.clientX-down[0],e.clientY-down[1])>5)dragged=true};
+          el.onclick=e=>{if(dragged)return;choose(el._item.id,e);if(e.ctrlKey||e.metaKey||e.shiftKey||selected.size>1)return;clearTimeout(clickTimer);clickTimer=setTimeout(async()=>{try{const result=await copyItem(el._item);toast(result?.message||'已复制')}catch(err){toast(err.message)}},220)};el.onkeydown=e=>{if(e.target!==el)return;if(e.key==='Enter'||e.key===' '){e.preventDefault();choose(el._item.id,e)}};
+          el.ondblclick=async()=>{clearTimeout(clickTimer);try{await call('openSticker',el._item)}catch(e){toast(e.message)}};
+          el.draggable=!(host.capabilities?.nativeWindow&&!host.capabilities?.nativeDrag);el.ondragstart=e=>{dragged=true;clearTimeout(clickTimer);startDrag(e,el._item)};
           // Prepare only after a short intentional hover, never every crossed card.
           let prepare;el.onpointerenter=()=>{prepare=setTimeout(()=>call('prepareItem',el._item).catch(()=>{}),160)};
           el.onpointerleave=()=>clearTimeout(prepare);

@@ -17,7 +17,7 @@ def main():
         identify=ctypes.WinDLL('shell32').SetCurrentProcessExplicitAppUserModelID
         identify.argtypes=[ctypes.c_wchar_p];identify.restype=ctypes.c_long
         identify('EmojiBridge.Desktop')
-    parser=argparse.ArgumentParser();parser.add_argument('--data-dir',type=Path);parser.add_argument('--debug-port',type=int);parser.add_argument('--design-preview',action='store_true')
+    parser=argparse.ArgumentParser();parser.add_argument('--data-dir',type=Path);parser.add_argument('--debug-port',type=int);parser.add_argument('--design-preview',action='store_true');parser.add_argument('--update-session',type=Path)
     args=parser.parse_args()
     from desktop_runtime import activate
     activate()
@@ -32,6 +32,7 @@ def main():
     from desktop_service import DesktopService
     from emoji_bridge.materials import default_root
     service=DesktopService(args.data_dir/'material-library' if args.data_dir else default_root())
+    service.update_session=args.update_session
     # Do not expose implementation helpers through the JS API.
     class API:pass
     api=API()
@@ -40,6 +41,12 @@ def main():
     api.promo_status=service.promo_status
     api.install_promo_projects=service.install_promo_projects
     api.collection_enrich=service.collection_enrich
+    api.collection_copy=service.collection_copy
+    api.collection_cache_options=service.collection_cache_options
+    api.component_install_online=service.component_install_online
+    api.import_folder=service.import_folder
+    for name in ('collection_tree','similar_start','similar_results'):setattr(api,name,getattr(service,name))
+    for name in ('update_check','update_status','update_install','update_startup_ready','library_backup','library_restore','library_open_restored'):setattr(api,name,getattr(service,name))
     for name in ('component_status','component_download','component_import','component_verify','drop_begin','drop_chunk','drop_finish','drop_notice'):setattr(api,name,getattr(service,name))
     for name in ('repair_library','library_repair_report','drawer_settings','open_drawer','reclaim_stickers','adjust_stickers','recover_stickers','open_drop_port','factory_listing','factory_plan','factory_generate','factory_preview','factory_preview_status','factory_examples','factory_save','status','preferences','listing','cancel_task','choose_import','paste','organize','collection','locate','choose_directory','export','preview_start','preview_frame','preview_stop','open_native','drag','workspace_layout','dependency_status','prepare_dependency','collection_listing','collection_action','start_transfer','cancel_transfer','transfer_results','cancel_editor_save','cancel_native_activity','restore_examples','assign_collection','undo_collection'):
         setattr(api,name,getattr(service,name))
@@ -62,6 +69,9 @@ def main():
                 # the normal taskbar registration after a hidden first Show.
                 native.Hide();native.Show()
         on_window(window,reveal)
+        from emoji_bridge.window_chrome import apply_titlebar
+        service.refresh_titlebar=lambda: on_window(window,lambda:apply_titlebar(window.native,service.preferences().get('palette')))
+        service.refresh_titlebar()
         from desktop_tray import DesktopTray
         try:service.tray=DesktopTray(service)
         except Exception as exc:service.task["text"]="托盘未启动："+str(exc)
@@ -75,6 +85,7 @@ def main():
     closing={'started':False,'detached':False,'generation':0,'interactive':False}
     def close_answer(kind):
         if not closing['started']:return
+        service.update_close_answer(kind)
         if kind=='close_interaction':
             closing['interactive']=False;closing['deadline']=time.monotonic()+6
             service.route_serial+=1;service.route_event={'serial':service.route_serial,'page':'native','view':'editor'}
@@ -92,6 +103,7 @@ def main():
         if kind=='close_draining':closing['interactive']=False;closing['deadline']=time.monotonic()+6;return
         if kind=='close_cancelled':
             closing['generation']+=1;closing['started']=False;closing['interactive']=False;service.closing=False
+            service.collections.monitor_suspended=False;service.collections.retry.pop('qq',None);service.collections.checked.pop('qq',None)
             window.evaluate_js("window.__emojiClosing=false;window.dispatchEvent(new Event('emoji-closing-cancelled'))")
             return
         closing['detached']=True
@@ -101,6 +113,7 @@ def main():
         if closing['detached']:return True
         if closing['started']:return False
         closing['started']=True;closing['generation']+=1;generation=closing['generation'];closing['deadline']=time.monotonic()+6;service.closing=True;service.cancel.set()
+        service.collections.monitor_suspended=True
         def silence():
             try:window.evaluate_js("window.__emojiClosing=true;window.dispatchEvent(new Event('emoji-closing'))")
             except Exception:pass

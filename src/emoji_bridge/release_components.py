@@ -74,7 +74,7 @@ def require(component):
     data = catalog()
     if not data: return
     spec = data['components'][component]
-    raise RuntimeError(f'需要安装“{spec["title"]}”（下载约 {spec["bytes"]/1024/1024:.0f} MB）。请打开“设置 → 可选组件”，下载后点“导入组件包”；作品已保留。')
+    raise RuntimeError(f'需要安装“{spec["title"]}”（下载约 {spec["bytes"]/1024/1024:.0f} MB）。请打开“设置 → 可选组件”点“下载并安装”，或导入已下载的组件包；作品已保留。')
 
 
 def status(app=None, verify=False, cancel=None):
@@ -156,3 +156,27 @@ def install(archive, component, app=None, cancel=None, progress=None):
                 finally: pointer.unlink(missing_ok=True)
         return {'text':'组件已导入；重新打开对应工具即可使用。若工具已加载旧组件，请重启软件。'}
     finally: LOCK.release()
+
+
+def download_install(component, app=None, cancel=None, progress=None):
+    """Download the pinned component, then reuse the validated installer."""
+    import urllib.request
+    data=catalog(app)
+    if not data or component not in data['components']:raise ValueError('未知组件')
+    spec=data['components'][component]
+    existing=next((s for s in status(app,verify=True,cancel=cancel) if s['id']==component),{})
+    if existing.get('state')=='installed':return {'text':'兼容组件已安装，无需重复下载。'}
+    if not spec['url'].startswith('https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/releases/download/'):
+        raise ValueError('组件下载地址不属于官方发行')
+    root().mkdir(parents=True,exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix='download-',dir=root()) as temp:
+        file=Path(temp)/'component.zip';done=0;value=hashlib.sha256()
+        request=urllib.request.Request(spec['url'],headers={'User-Agent':'EmojiBridge'})
+        with urllib.request.urlopen(request,timeout=20) as response,file.open('xb') as target:
+            while block:=response.read(1024*1024):
+                check(cancel);done+=len(block)
+                if done>spec['bytes']:raise ValueError('下载大小超过组件清单')
+                target.write(block);value.update(block)
+                if progress:progress('正在下载组件',done,spec['bytes'])
+        if done!=spec['bytes'] or value.hexdigest()!=spec['sha256']:raise ValueError('下载校验失败，原组件保留，请重试')
+        return install(file,component,app=app,cancel=cancel,progress=progress)

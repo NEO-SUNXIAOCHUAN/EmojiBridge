@@ -1,6 +1,8 @@
 export function readLabel(side={}) {
  const state=side.state||{},check=side.check||{};
- if(state.active&&state.action==='refresh')return state.text||'正在读取收藏';
+ // Background scans retain the last completed status; per-file progress is
+ // available in diagnostics without making the account card flicker.
+ if(state.active&&state.action==='refresh')return check.result==='success'?'已读取':'已排队';
  if(check.result==='cancelled')return '读取已取消';
  if(check.result==='incomplete'||check.result==='deferred'||(state.failed&&state.action==='refresh'))return '读取未完成，可重试';
  if(check.result==='success')return check.count===0?'本次读取为空':'已读取';

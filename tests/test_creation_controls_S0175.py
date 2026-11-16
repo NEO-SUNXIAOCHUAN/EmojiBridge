@@ -76,9 +76,10 @@ class Stickers(unittest.TestCase):
                     try:
                         manager.user32.SetCursorPos(state['x']+5,state['y']+5)
                         manager._procedure(h,0x0201,0,0)
+                        manager._procedure(h,0x0202,0,0)
                         self.assertTrue(state['fixed'])
                         self.assertFalse(manager.user32.GetWindowLongPtrW(h,-20)&0x20)
-                        manager._procedure(h,0x0201,0,0);self.assertFalse(state['fixed'])
+                        manager._procedure(h,0x0201,0,0);manager._procedure(h,0x0202,0,0);self.assertFalse(state['fixed'])
                         size=manager._display_frame(state).size
                         manager._rotate(h,90);self.assertEqual(manager._display_frame(state).size,size[::-1])
                         self.assertEqual(manager._windows[handles[1]].get('angle',0),0)

@@ -54,6 +54,9 @@ def execute_batch(requests,cancel=None,progress=None):
                 r=OrdinaryImport(request['asset'],reports[n],dest,cancel)
                 if r.target!='qq' or (r.asset.get('source_only') and request['command']=='add'):
                     raise ValueError('qq_target_asset_required')
+                if request['command']=='add' and request.get('new_intent_completed') and r.prior and r.prior.get('status') in ('desktop_confirmed','already_exists'):
+                    save_json(dest/'previous-completed-intent.json',r.prior)
+                    r.prior=None;r.report['submission_state']='not_started'
                 runners.append(r)
             if len({r.asset['source_sha256'] for r in runners})!=len(runners):raise ValueError('duplicate_batch_original')
             q=runners[0].q;runners[0].cancelled();phase('opening_qq');q.bind()

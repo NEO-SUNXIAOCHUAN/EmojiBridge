@@ -13,8 +13,10 @@ from tkinter import ttk,filedialog
 from PIL import Image,ImageGrab,ImageTk
 
 VIDEO_EXTENSIONS={'.mp4','.m4v','.mov','.mkv','.avi','.webm','.wmv','.mpeg','.mpg','.ts'}
+from emoji_bridge.library_gate import store_write
 
 
+@store_write
 def own_source(store,path,cancel):
     """Keep external source bytes, so a moved download does not break later edits."""
     path=Path(path).resolve()

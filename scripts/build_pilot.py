@@ -166,7 +166,7 @@ def build(destination,runtime,cutout_runtime=None,desktop_runtime=None,*,demo=Fa
         if any(p in forbidden for p in relative.parts) or file.suffix.lower() in ('.db','.db-wal','.db-shm'):
             raise ValueError('private_file_in_distribution')
         files.append({'path':relative.as_posix(),'size':file.stat().st_size,'sha256':file_sha(file)})
-    manifest={'build':version,'source_commit':commit,'source_tree_clean':True,
+    manifest={'build':version,'source_commit':commit,'source_tree_clean':True,'database_schema':3,
               'data_profile':'package-local-demo' if demo else 'user-local',
               'runtime':sys.version.split()[0],'packages':versions,'optional_packages':optional_versions,'desktop_packages':desktop_versions,'template_packages':template_versions,'archive_root':ARCHIVE_ROOT,
               'vision_packages':vision_versions,'max_archive_path_chars':max(len(ARCHIVE_ROOT+'/'+f['path']) for f in files),

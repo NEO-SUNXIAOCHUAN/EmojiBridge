@@ -102,6 +102,7 @@ def collapse_identical(side):
 
 
 def normalize_qq_snapshot(library):
+    if library.get('clients',{}).get('qq',{}).get('source_kind')=='personal_cache_directory':return False
     """Migrate old saved originals out of the latest observed-favorites list.
 
     An absent item may be on an unread page; archive it, never call it deleted.
@@ -126,6 +127,7 @@ def bootstrap(path=None):
     ROOT=path.parent.parent.parent
     if path.exists():
         library=read(path)
+        if library.get('clients',{}).get('qq',{}).get('source_kind')=='personal_cache_directory':return library
         if normalize_qq_snapshot(library):save(library,path)
         return library
     library={'schema':'bridge-library-v1','clients':{}}
@@ -148,8 +150,7 @@ def bootstrap(path=None):
             if found:attach_original(found,entry['asset'])
     else:library['clients']['wechat']={'complete':False,'scope':'尚未读取','items':[]}
     library['clients']['qq']={'complete':False,'scope':'尚未读取','items':[]}
-    scans=sorted((ROOT/'reports/T005').glob('qq-scan-*.json'))
-    if scans:merge_qq(library,scans[-1])
+    # Historical scan receipts stay on disk; new reads use the selected cache.
     save(library,path);return library
 
 

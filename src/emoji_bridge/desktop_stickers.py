@@ -5,6 +5,7 @@ import ctypes as c
 from ctypes import wintypes as w
 from concurrent.futures import Future
 import os
+import math
 from pathlib import Path
 import queue
 import threading
@@ -14,8 +15,8 @@ from PIL import Image,ImageDraw
 from .material_preview import FrameStream
 
 
-def display_stream(path):
-    stream=FrameStream(path,(384,384))
+def display_stream(path, size=(384,384)):
+    stream=FrameStream(path,size)
     try:
         frame,duration,index,count=stream.frames.get(timeout=15)
         if frame is None:raise ValueError(duration)
@@ -26,7 +27,7 @@ def display_stream(path):
 
 
 class StickerManager:
-    def __init__(self):
+    def __init__(self, on_context=None):
         self._queue = queue.Queue()
         self._ready = threading.Event()
         self._start_lock = threading.Lock()
@@ -35,6 +36,7 @@ class StickerManager:
         self._startup_error = None
         self._windows = {}
         self._suspended = False
+        self.on_context = on_context
 
     def start(self):
         if os.name != "nt":
@@ -59,11 +61,51 @@ class StickerManager:
         self.user32.PostThreadMessageW(self._thread_id, 0x8006, 0, 0)
         return future.result(timeout=10)
 
-    def show(self, path, ident=None):
+    def show(self, path, ident=None, placement=None):
         # Decoding is on the JS bridge worker, never the Win32/UI message thread.
         ident=ident or str(Path(path).resolve())
-        decoded=display_stream(Path(path))
-        try:return self._submit(lambda:self._create(decoded,Path(path).stem,ident,Path(path)))
+        decoded=display_stream(Path(path),(4096,4096) if placement else (384,384))
+        try:
+            result=self._submit(lambda:self._create(decoded,Path(path).stem,ident,Path(path)))
+            if placement:
+                def place():
+                    handle=int(result['id']);state=self._windows[handle]
+                    state.update(x=int(placement[0]),y=int(placement[1]),scale=96/state['dpi'])
+                    self._recover(handle)
+                self._submit(place)
+            return result
+        except Exception:decoded[0].close();raise
+
+    def inspect(self, handle):
+        def read():
+            state=self._windows.get(int(handle))
+            if not state:return None
+            width,height=self._display_frame(state).size
+            return {key:state[key] for key in ('x','y','paused','count','fixed','angle','path')} | {'width':width,'height':height}
+        return self._submit(read)
+
+    def play(self, handle):
+        def toggle():
+            state=self._windows.get(int(handle))
+            if not state:raise ValueError('这张贴图已关闭')
+            if state['count']>1:self._toggle_playback(state)
+            return {'paused':state['paused'],'animated':state['count']>1}
+        return self._submit(toggle)
+
+    def replace(self, handle, path, expected):
+        decoded=display_stream(path)
+        def change():
+            state=self._windows.get(int(handle))
+            if not state or state['path']!=expected:decoded[0].close();return False
+            stream,frame,duration,count,loops=decoded
+            old=self._display_frame(state).size
+            state['stream'].close()
+            state.update(stream=stream,frame=frame,duration=duration,count=count,loops=loops,cycles=0,
+                path=path,index=0,finished=False,due=time.monotonic()+duration/1000,dirty=True)
+            new=self._display_frame(state).size
+            state['x']+=round((old[0]-new[0])/2);state['y']+=round((old[1]-new[1])/2)
+            self._recover(int(handle));return True
+        try:return self._submit(change)
         except Exception:decoded[0].close();raise
 
     def recover_all(self):
@@ -226,7 +268,7 @@ class StickerManager:
         bind(u, "DestroyMenu", [w.HMENU], w.BOOL)
         if hasattr(u,'GetDpiForWindow'):bind(u,'GetDpiForWindow',[w.HWND],w.UINT)
         self.instance = k.GetModuleHandleW(None)
-        self.class_name = "EmojiBridgeAlphaSticker_" + str(os.getpid())
+        self.class_name = "EmojiBridgeAlphaSticker_" + str(os.getpid()) + '_' + str(id(self))
         wc = WNDCLASS(0x0008, self._wndproc, 0, 0, self.instance, None,
                       u.LoadCursorW(None, c.c_void_p(32512)), None, None, self.class_name)
         if not u.RegisterClassW(c.byref(wc)):
@@ -246,7 +288,7 @@ class StickerManager:
         if not handle:
             raise c.WinError(c.get_last_error())
         self._windows[handle] = dict(stream=stream,frame=frame,duration=duration,count=count,loops=loops,cycles=0,ident=ident,x=x,y=y,dpi=self.user32.GetDpiForWindow(handle) if hasattr(self.user32,'GetDpiForWindow') else 96,due=time.monotonic()+duration/1000,
-            scale=1.0, paused=False,finished=False,path=path,
+            scale=1.0, angle=0, paused=False,finished=False,path=path,pin_press=None,
             dragging=None, index=0, dirty=True,fixed=False,hover=True)
         try:
             self._draw(handle)
@@ -268,9 +310,9 @@ class StickerManager:
         if state.get('angle',0):image=image.rotate(state['angle'],Image.Resampling.BICUBIC,expand=True)
         return image
 
-    def _rotate(self,handle,angle):
+    def _rotate(self,handle,angle,explicit=False):
         state=self._windows[handle]
-        if state.get('fixed'):return
+        if state.get('fixed') and not explicit:return
         old=self._display_frame(state).size;state['angle']=angle%360
         new=self._display_frame(state).size
         state['x']+=round((old[0]-new[0])/2);state['y']+=round((old[1]-new[1])/2)
@@ -332,6 +374,8 @@ class StickerManager:
                     state.update(x=rect.left,y=rect.top)
                 return 0
             if message == 0x0113:  # WM_TIMER
+                press=state.get('pin_press')
+                if press and time.monotonic()-press['at']>=.35:press['rotate']=True
                 if not state.get('dragging'):
                     p=w.POINT();self.user32.GetCursorPos(c.byref(p));rect=w.RECT();self.user32.GetWindowRect(handle,c.byref(rect))
                     inside=rect.left<=p.x<rect.right and rect.top<=p.y<rect.bottom
@@ -355,12 +399,23 @@ class StickerManager:
                 self.user32.GetCursorPos(c.byref(point))
                 rect=w.RECT();self.user32.GetWindowRect(handle,c.byref(rect));r=state.get('control_size',18)
                 x,y=point.x-rect.left,point.y-rect.top
-                if y<r and x<r:self._fixed(handle,not state.get('fixed'));return 0
+                if y<r and x<r:
+                    cx=rect.left+(rect.right-rect.left)/2;cy=rect.top+(rect.bottom-rect.top)/2
+                    state['pin_press']={'at':time.monotonic(),'rotate':False,'cx':cx,'cy':cy,
+                        'pointer':math.atan2(point.y-cy,point.x-cx),'angle':state.get('angle',0)}
+                    self.user32.SetCapture(handle);return 0
                 if y<r and x>=rect.right-rect.left-r:self.user32.DestroyWindow(handle);return 0
                 if state.get('fixed'):return 0
                 corner=x>=rect.right-rect.left-r and y>=rect.bottom-rect.top-r
                 state["dragging"] = ('resize' if corner else 'move',point.x,point.y,state['x'],state['y'],state['scale'],rect.right-rect.left,rect.bottom-rect.top)
                 self.user32.SetCapture(handle)
+                return 0
+            if message==0x0200 and state.get('pin_press'):
+                press=state['pin_press']
+                if time.monotonic()-press['at']>=.35:
+                    press['rotate']=True;p=w.POINT();self.user32.GetCursorPos(c.byref(p))
+                    delta=math.atan2(p.y-press['cy'],p.x-press['cx'])-press['pointer']
+                    self._rotate(handle,press['angle']-math.degrees(delta),explicit=True)
                 return 0
             if message == 0x0200 and state["dragging"]:
                 point = w.POINT()
@@ -378,10 +433,13 @@ class StickerManager:
                 cursor=32642 if p.x>=rect.right-r and p.y>=rect.bottom-r else 32646
                 self.user32.SetCursor(self.user32.LoadCursorW(None,c.c_void_p(cursor)));return 1
             if message == 0x0202:
+                press=state.get('pin_press');state['pin_press']=None
+                if press and not press['rotate'] and time.monotonic()-press['at']<.35:
+                    self._fixed(handle,not state.get('fixed'))
                 state["dragging"] = None
                 self.user32.ReleaseCapture()
                 return 0
-            if message==0x0215:state['dragging']=None;return 0
+            if message==0x0215:state['dragging']=None;state['pin_press']=None;return 0
             if message==0x007E:self._recover(handle);return 0
             if message==0x02E0:
                 rect=c.cast(lp,c.POINTER(w.RECT)).contents
@@ -394,6 +452,9 @@ class StickerManager:
                 state["dirty"] = True
                 return 0
             if message == 0x0205:  # right up
+                if self.on_context:
+                    threading.Thread(target=self.on_context,args=(handle,),daemon=True,name='sticker-actions').start()
+                    return 0
                 point = w.POINT()
                 self.user32.GetCursorPos(c.byref(point))
                 menu = self.user32.CreatePopupMenu()

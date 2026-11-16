@@ -11,7 +11,7 @@ import time
 from emoji_bridge import catalog
 from emoji_bridge.materials import now
 from emoji_bridge.state import save_json, single_instance
-from client_material_import import binding, create as create_import, run as import_originals
+from client_material_import import binding
 
 
 def profile_binding(profile):
@@ -74,7 +74,7 @@ def create(store, rows, ids, target, profile, path, *, source_client=None):
         jobs.append(dict(id=uuid.uuid4().hex, item_id='catalog:' + ident, name=row['name'],
                          target=target, source_ref=ref, status='queued', attempts=0, submission_state='not_started'))
     from emoji_bridge.compatibility_copy import settings
-    plan = dict(schema='selected-transfer-v1', source_kind='local_material_library',
+    plan = dict(schema='selected-transfer-v1', source_kind='local_material_library',intent_id=uuid.uuid4().hex,
                 library_root=str(store.root), target=target, profile=str(Path(profile).resolve()),
                 profile_binding=profile_binding(profile), jobs=jobs, created=now(),
                 compatibility=settings(store.root, target), source_selection=True,source_client=source_client or 'mixed_explicit',
@@ -84,79 +84,28 @@ def create(store, rows, ids, target, profile, path, *, source_client=None):
     return plan
 
 
-def prepare(plan, path, profile, store, cancel, save, *, runner=import_originals):
-    """Acquire/persist originals with existing receipts and retryable import jobs."""
+def prepare(plan, path, profile, store, cancel, save, **unused):
+    """Prepare selected originals without adding any material record."""
+    from collection_files import original
     source_profile=Path(plan.get('source_profile') or profile)
-    library_path = source_profile / 'runtime-data/T005/library.json'
-    from qq_appearance_prepare import preparation_session
-    from emoji_bridge.appearance_originals import evidence_session
-    from emoji_bridge.media import inspection_session
-    with single_instance(source_profile / 'runtime-data/T005/collection.lock'), preparation_session(), evidence_session(), inspection_session():
-        check_profile(plan, profile)
-        if runner is import_originals:
-            library=catalog.read(library_path)
-            known={i['id']:i for i in library['clients']['qq']['items']}
-            requested=[]
-            for job in plan['jobs']:
-                ref=job.get('source_ref') or {}
-                item=known.get(ref.get('item_id'))
-                if (job['item_id'].startswith('catalog:') and ref.get('client')=='qq'
-                        and plan['target']!='qq' and item and binding(item)==ref.get('binding')
-                        and not item.get('original_available')):
-                    requested.append(item['id'])
-            if requested and not cancel.exists():
-                from qq_selected_prepare import complete_selected
-                try:complete_selected(library_path,list(dict.fromkeys(requested)),cancel)
-                except (ValueError,OSError) as exc:
-                    # Ready subset results have already been merged. Preserve
-                    # the source failure for remaining items and never resend.
-                    plan['selected_preparation_reason']=str(exc)
-                    save()
+    library_path=source_profile/'runtime-data/T005/library.json'
+    with single_instance(source_profile/'runtime-data/T005/collection.lock'):
+        check_profile(plan,profile)
+        library=catalog.read(library_path)
         for job in plan['jobs']:
-            if cancel.exists(): return
-            if not job['item_id'].startswith('catalog:'): continue
-            ref = job.get('source_ref')
-            if (ref and ref.get('client')==plan['target'] and not job.get('attempts')
-                    and job.get('submission_state','not_started')=='not_started'):
-                job.update(status='failed',preparation_error='来源与目标相同，请在来源页选择另一端',reason='来源与目标相同，该项未提交')
-                save();continue
-            if not ref:
-                job.update(status='waiting_original', preparation_error='本次未读到所选来源，请更新该来源后重新选择', reason='本次未读到所选来源，请更新该来源后重新选择')
-                save(); continue
+            if cancel.exists():return
+            if not job['item_id'].startswith('catalog:'):continue
+            if job.get('target_asset'):continue  # Preserve existing receipts/unknown submissions.
+            ref=job.get('source_ref') or {}
             try:
-                check_profile(plan, profile)
-                sub = path.parent / (path.stem + '-originals') / (job['id'] + '.json')
-                if not sub.exists():
-                    library = catalog.read(library_path)
-                    item = next((i for i in library['clients'][ref['client']]['items'] if i['id'] == ref['item_id']), None)
-                    if not item or binding(item) != ref['binding']: raise ValueError('所选收藏记录已变化，请重新选择')
-                    create_import(library, ref['client'], [ref['item_id']], sub, {'acquire': True, 'allow_source_ui': False})
-                else:
-                    # Existing transfer plans retain their source identities
-                    # and completed results. Preparation no longer opens QQ
-                    # once per missing original before visiting the target.
-                    original_plan=catalog.read(sub)
-                    original_plan['options']['allow_source_ui']=False
-                    save_json(sub,original_plan)
-                job.update(status='acquiring_original', reason='正在校验并复用所选原件')
-                save()
-                started = time.perf_counter()
-                def original_progress(n,t,message):
-                    job['reason'] = message
-                    job['original_preparation_seconds'] = round(time.perf_counter()-started,3)
-                    save()
-                result = runner(sub, library_path, store, cancel, progress=original_progress)
-                job['original_preparation_seconds'] = round(time.perf_counter()-started,3)
-                value = result['jobs'][0]
-                if value.get('material_id'):
-                    item = store.get(value['material_id'])
-                    job.update(item_id=item['id'], source_sha256=item['id'], status='queued')
-                    job.pop('preparation_error', None); job.pop('reason', None)
-                elif cancel.exists():
-                    job.update(status='queued', reason='原件准备已取消，未提交')
-                else:
-                    reason = value.get('reason', '原件待取得；请在来源客户端打开该收藏后重试')
-                    job.update(status='waiting_original' if value['status']=='waiting' else 'failed', preparation_error=reason, reason=reason)
-            except (ValueError, OSError) as exc:
-                job.update(status='failed', preparation_error=str(exc), reason='原件获取失败：'+str(exc))
-            save()
+                if ref.get('client')==plan['target']:raise ValueError('来源与目标相同，未提交')
+                item=next((i for i in library['clients'].get(ref.get('client'),{}).get('items',[]) if i['id']==ref.get('item_id')),None)
+                if not item or binding(item)!=ref.get('binding'):raise ValueError('来源条目已变化，请重新读取并选择')
+                file,digest,provenance=original(ref['client'],item,library,source_profile,cancel)
+                job.update(item_id='source:'+digest,source_file=str(file),source_sha256=digest,
+                           source_provenance=provenance,status='queued')
+                job.pop('preparation_error',None);job.pop('reason',None)
+            except InterruptedError:return
+            except (ValueError,OSError) as exc:
+                job.update(status='waiting_original',preparation_error=str(exc),reason=str(exc))
+            catalog.save(library,library_path);save()

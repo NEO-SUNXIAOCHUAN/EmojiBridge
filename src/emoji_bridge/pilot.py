@@ -9,7 +9,7 @@ from . import client_sources as sources, paths
 from .state import save_json
 from . import compatibility as compat
 
-BUILD='S0174'
+BUILD='S0176'
 
 
 def discovery():
@@ -56,7 +56,7 @@ def discovery_with_capabilities():
 def validate_choice(found,wechat_db,qq_ori):
     from .qq_cache import personal_root
     candidates={k:v for k,v in found['clients'].items() if compat.classify(k,v.get('version'))!='unsupported'}
-    if not candidates:
+    if not candidates and not qq_ori:
         reasons=[compat.failure_text(k,'client_family_unadapted') for k in found['clients']]
         raise ValueError('当前客户端尚未验证或未打开。'+(' '.join(reasons) if reasons else '请打开本人的客户端后重新检测。'))
     result={'schema':'pilot-sources-v1','disabled_sources':{},'read_authorized':True,
@@ -64,6 +64,12 @@ def validate_choice(found,wechat_db,qq_ori):
             'at':datetime.now().astimezone().isoformat()}
     for client in ('wechat','qq'):
         info=found['clients'].get(client)
+        if client=='qq' and qq_ori:
+            # Choosing a cache directory is a local read authorization, not a
+            # demand for a running QQ process or an accessible favorites panel.
+            result['qq_ori']=str(personal_root(qq_ori))
+            if info and info.get('exe'):result['qq_exe']=info['exe']
+            continue
         if client not in candidates:
             result['disabled_sources'][client]='client_family_unadapted' if info else 'client_not_detected'
             continue
@@ -168,7 +174,7 @@ def setup(root,base,on_ready=None):
     root.title('表情互通 · 首次使用与账号选择');root.geometry('800x700');root.minsize(700,560)
     scroll=ScrollBody(root);scroll.pack(fill='both',expand=True)
     frame=ttk.Frame(scroll.body,padding=20);frame.pack(fill='both',expand=True)
-    ttk.Label(frame,text='先登录微信和 QQ，再确认本人的表情数据',font=('Microsoft YaHei UI',15)).pack(anchor='w',fill='x')
+    ttk.Label(frame,text='确认本人的表情数据；QQ 缓存可离线读取',font=('Microsoft YaHei UI',15)).pack(anchor='w',fill='x')
     ttk.Label(frame,text='微信4.1 / 4.2系列、QQ9.9系列按能力检测；具体版本仍逐项核验。客户端支持100%、125%和150%缩放。\n一端不可读取时，另一端仍可准备。检测不发送、不收藏、不删除。',wraplength=700).pack(anchor='w',fill='x',pady=8)
     summary=tk.StringVar();ttk.Label(frame,textvariable=summary,wraplength=700).pack(anchor='w',fill='x',pady=6)
     fields={};combos={};found={};answer=[];detected=queue.Queue();detecting=[False];validating=[False];manual={}
