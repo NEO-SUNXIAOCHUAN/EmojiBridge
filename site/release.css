@@ -26,3 +26,5 @@
 #release-details{border-left:0;border-top:1px solid #58728d;padding:24px 28px}
 @media(max-width:760px){.edition-heading{padding:24px}.edition-row{align-items:flex-start;flex-direction:column;gap:18px;padding:24px}.edition-link{width:100%}.edition-heading h3{font-size:20px}.edition-row p{max-width:none}.download-options .material-download{padding:24px}}
 @media(prefers-reduced-motion:reduce){.edition-secondary{transition:none}}
+
+.s0183-creation{margin:36px 0 48px}.s0183-creation img{display:block;width:100%;height:auto;border:1px solid #384e66;border-radius:12px}.s0183-creation figcaption{max-width:70ch;margin:16px auto;color:#b8c8da;font-size:14px;line-height:1.8;text-align:center}
