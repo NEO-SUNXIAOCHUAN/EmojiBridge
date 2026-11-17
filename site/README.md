@@ -101,6 +101,8 @@ S0183 汇总 S0176–S0183 的改进：素材库批量选择、文件夹导入�
 
 Created by **Neo**。项目自有源码采用 **GPL-3.0-only**；第三方代码及素材保留各自许可与来源，表情包、音乐、漫画等不自动适用源码许可。
 
+**EmojiBridge 由 Neo 创建与维护。** 项目名称与专用 Logo 用于标识原项目，品牌权益与源码许可分别说明；衍生版应与官方发行版清楚区分。详见[作者、品牌与衍生项目署名说明](https://github.com/NEO-SUNXIAOCHUAN/EmojiBridge/blob/main/BRANDING.md)。
+
 ## 从源码运行与构建
 
 Windows x64、带 Tk 的 Python 3.12 与 Microsoft WebView2。桌面入口还需要 `runtime/desktop` 中的桌面依赖；完整构建的组件准备与固定校验值见 [BUILDING.md](BUILDING.md)。公开源码与本版完整包对应，产品提交记录在 [SOURCE_BUILD.json](SOURCE_BUILD.json)。

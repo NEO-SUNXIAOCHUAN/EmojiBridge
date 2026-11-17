@@ -1,5 +1,7 @@
 # EmojiBridge A 版正式图标
 
+EmojiBridge — Created by Neo。品牌使用、官方身份与衍生项目说明见 [BRANDING.md](../../BRANDING.md)。
+
 来源：用户本轮提供的 `EmojiBridge-icon-A-final.zip` 与 `EmojiBridge.ico`。
 本目录的 ICO 和 64px PNG 直接复制原件，未重画、改色或裁剪。用于主窗口、任务栏、托盘、原编辑器及软件标志。
 
